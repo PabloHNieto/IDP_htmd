@@ -8,6 +8,9 @@ plt.switch_backend('agg')
 #Analysis
 def make_analysis(out_folder=None, data_folder=None, model=None, clu=None):
     import json
+    import os
+
+    os.makedirs(out_folder, exist_ok=True)
 
     if (not out_folder or not data_folder):
         print("Not data or out folder provided")

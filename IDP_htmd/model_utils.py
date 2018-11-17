@@ -46,7 +46,7 @@ def save_structures(model, outdir, states, numsamples, statetype, **kwargs):
         return
     os.makedirs(outdir, exist_ok=True)
     for idx, i in enumerate(states):
-        m = model.getStates(statetype=statetype[idx], states=[idx], numsamples=numsamples[idx], **kwargs)
+        m = model.getStates(statetype=statetype[idx], states=[i], numsamples=int(numsamples[idx]), **kwargs)
         for struct in m:
             for frame in range(struct.numFrames):
                 out_name = "{}/{}_{}_{}.pdb".format(outdir, statetype[idx], i , frame)

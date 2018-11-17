@@ -8,6 +8,9 @@ plt.switch_backend('agg')
 #Analysis
 def make_analysis(out_folder=None, data_folder=None, model=None, clu=None):
     import json
+    import os
+
+    os.makedirs(out_folder, exist_ok=True)
 
     if (not out_folder or not data_folder):
         print("Not data or out folder provided")
@@ -41,7 +44,7 @@ def make_analysis(out_folder=None, data_folder=None, model=None, clu=None):
     if clu:
         scan_clusters(model, clu, out_dir=out_folder)
         model = Model()
-        model.load(out_folder+"model.dat")
+        model.load(out_folder+"/model.dat")
     # Create bulk state
     idpmol_contact_metric = MetricDistance(sel1="noh and protein",
                                            sel2="noh and resname MOL",
