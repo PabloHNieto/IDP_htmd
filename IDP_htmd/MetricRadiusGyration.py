@@ -1,13 +1,10 @@
-from htmd.molecule.util import sequenceID
 from htmd.projections.projection import Projection
 import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 
 
-class PHNMetricRadiusGyration(Projection):
-    """ 
-    """
+class MetricRG(Projection):
     _atomic_mass = dict(H=1.01, He=4.00, Li=6.94, Be=9.01, B=10.81, C=12.01,
                    N=14.01, O=16.00, F=19.00, Ne=20.18, Na=22.99, Mg=24.31,
                    Al=26.98, Si=28.09, P=30.97, S=32.07, Cl=35.45, Ar=39.95,
@@ -48,6 +45,30 @@ class PHNMetricRadiusGyration(Projection):
 
         return mass, tmass
 
+    @staticmethod
+    def predict(aa):
+      """
+      Source: http://www.scfbio-iitd.res.in/software/proteomics/rg.jsp
+      According to Wilkings et at. parameters
+      Source:
+        'Hydrodynamic radii of native and denatured proteins measured by pulse field gradient NMR techniques'
+        Wilkins DK, Grimshaw SB, Receveur V, Dobson CM, Jones JA, Smith LJ
+      
+      Parameters
+      ----------
+      aa : int
+          Number of aminoacids
+      
+      Returns
+      -------
+      tuple
+          Lower and upper theoretical limits for the radious of gyration for a protein of the given length
+      """
+      upper_limit = 2.54 * aa**0.522
+      lower_limit = (3/5)**0.5 * 4.75 * aa**0.29
+      # lower_limit = 0.395 * aa **(3/5) + 7.257 
+      return lower_limit, upper_limit
+
     def project(self, mol):
         """ Project molecule.
 
@@ -61,14 +82,13 @@ class PHNMetricRadiusGyration(Projection):
         data : np.ndarray
             An array containing the projected data.
         """
+
         mol = mol.copy()
         mol.filter(self.sel, _logger=False)
-
-        xm = mol.coords*self.mass[:, None, None]
-        rr = np.sum(np.sum(mol.coords*xm, axis=1), axis=0)
-        mm = np.sum((np.sum(xm, axis=0)/self.t_mass)**2, axis=0)
-        rg = np.sqrt(rr/self.t_mass - mm)
-
+        center_of_mass = np.sum(mol.coords * self.mass[:, None, None], axis=0)/self.t_mass
+        distance_from_com = np.sqrt(np.sum((mol.coords - center_of_mass)**2, axis=1))
+        rg = np.sqrt(np.sum(self.mass[:,None] * distance_from_com**2, axis=0)/self.t_mass)
+        
         return rg
 
     def getMapping(self, mol):
@@ -88,3 +108,16 @@ class PHNMetricRadiusGyration(Projection):
             indexes += [i]
             description += ['Dummy metric.']
         return DataFrame({'type': types, 'atomIndexes': indexes, 'description': description})
+
+
+if __name__ == '__main__':
+  from htmd.molecule.molecule import Molecule
+  mol = Molecule("./ref_files/MD_trajectory/structure.pdb")
+  mol.read("./ref_files/MD_trajectory/structure.psf")
+  # mol.read("./ref_files/MD_trajectory/output.xtc")
+  mol.wrap("protein")
+  mol.align("protein")
+
+  met = MetricRG()
+
+  met.project(mol)

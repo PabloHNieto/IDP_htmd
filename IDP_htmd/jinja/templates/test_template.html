@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>IDP</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="icon" 
+      type="image/png" 
+      href="./protein-17-554033.png">
+</head>
+<body>
+	<div class="container">
+		<div class="jumbotron"> PHN_test
+		</div>
+	</div>
+<center>
+    <h1>Proba PHN</h1>
+    <p>{{ urls|length }} links</p>
+</center>
+<ol align="left">
+{% set counter = 0 -%}
+{% for url in urls -%}
+<li><a href="{{ url }}">{{ url }}</a></li>
+{% set counter = counter + 1 -%}
+{% endfor -%}
+</ol>
+</body>
+</html>

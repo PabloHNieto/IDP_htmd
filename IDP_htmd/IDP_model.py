@@ -306,7 +306,9 @@ class IDPModel(object):
 			node_color_final.append(tmp_color)
 		return node_color_final
 
-def plot_contacts(data, mol, labels=None, idx=None, mod=None, title="Default Title", plot=True, save=None, vmin=0, vmax=1, cmap="viridis"):
+def plot_contacts(data, mol, labels=None, idx=None, mod=None, 
+	title="Default Title", plot=True, save=None, vmin=0, vmax=1, 
+	xlabel=None, cmap="viridis"):
 	if not idx:
 		idx = mol.resid[0]
 	xlabels = [b + str(i+idx) for i,b in enumerate(mol.sequence()['P1'])]
@@ -336,8 +338,7 @@ def plot_contacts(data, mol, labels=None, idx=None, mod=None, title="Default Tit
 		y = [i for i in range(len(labels))]
 		ax.set_yticks(y)
 		ax.set_yticklabels(labels)
-	ax.set_xlabel("p27 Sequence")
-
+	ax.set_xlabel(xlabel)
 
 	divider = make_axes_locatable(ax)
 	cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -350,30 +351,32 @@ def plot_contacts(data, mol, labels=None, idx=None, mod=None, title="Default Tit
 	if save:
 		plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
 
-def get_data(mod, metr, skip=1):
-	""" Returns the projected data of metric applied to a model
+def plot_RG(data, mol, chain_id="P1", limits=None, labels=None, plot=True, save=None):
+	from IDP_htmd.MetricRadiusGyration import MetricRG
 
+	seq = mol.sequence()[chain_id]
+	if not limits:
+		lower_bound, upper_bound = MetricRG.predict(len(seq))
+		limits = [ [lower_bound, upper_bound] for i in range(len(data[0])) ]
 
-		Parameters
-		----------
-		mod : htmd.Model
-			Model to get the simlist
-		metric : htmd.MetricData
-			MetricData with the metric we want to project
-		skip : int
-			Frames to skip while projecting the data. Default = 1
-		"""
-	metric = Metric(mod.data.simlist, skip = skip)
-	metric.set(metr)
-	data = metric.project()
-	return data
+	if not labels:
+		labels = [ 'Macro-{}'.format(i) for i,_ in enumerate(data[0])]
+		labels[-1] = "Aggregated"
+	
+	plt.figure()
+	plt.bar(range(len(data[0])), data[0], yerr=data[1], width=0.8)
+	plt.xticks(range(len(data[0])), labels, rotation=45)
 
-def plotDataByState(data, states, name="ss", stateType="macro"):
-	for macro, col in zip(data, list("rbgy")):
-		plt.plot(range(1, 1+len(macro[0])), macro[0], color=col, marker="o")
-		if name == "ss":        
-			plt.plot(range(1, 1+len(macro[0])), macro[1]*-1, color=col, marker="o")
-	plt.show()
+	for idx,(lower_bound, upper_bound) in enumerate(limits):
+		plt.hlines(lower_bound, idx+0.1, idx-0.1, colors='red', linestyles='solid', label='Folded-RG')
+		plt.hlines(upper_bound, idx+0.1, idx-0.1, colors='blue', linestyles='solid', label='Coil-RG')
+
+	if plot:
+		plt.show()
+
+	if save:
+		plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
+
 
 def _atom_contact_plot(ver, ax, mol, mapping, label, cmap="viridis"):
 

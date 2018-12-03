@@ -1,22 +1,22 @@
 from htmd.ui import *
 from htmd.molecule.util import maxDistance
 
-def write_equil_unfold(outdir_build, outdir_equil, 
-    steps=7500000, temperature=500):
-    from htmd.protocols.equilibration_v2 import Equilibration
-    print(outdir_equil)
-    # High temperature simulation for unfolding
-    md = Equilibration()
-    md.runtime = steps
-    md.timeunits = 'steps'
-    md.temperature = temperature
-    md.nvtsteps = steps
-    md.constraintsteps = -1
-    md.acemd.dielectric = '80'
-    try:
-        md.write(outdir_build, outdir_equil)
-    except:
-        print ("---> ", outdir_build)
+# def write_equil_unfold(outdir_build, outdir_equil, 
+#     steps=7500000, temperature=500):
+#     from htmd.protocols.equilibration_v2 import Equilibration
+#     print(outdir_equil)
+#     # High temperature simulation for unfolding
+#     md = Equilibration()
+#     md.runtime = steps
+#     md.timeunits = 'steps'
+#     md.temperature = temperature
+#     md.nvtsteps = steps
+#     md.constraintsteps = -1
+#     md.acemd.dielectric = '80'
+#     try:
+#         md.write(outdir_build, outdir_equil)
+#     except:
+#         print ("---> ", outdir_build)
 
 def write_equil(outdir_build, outdir_equil, unfold=False,
                 steps=7500000, temperature=310):
@@ -41,24 +41,26 @@ def send2simulate(equil):
     mdx.exclude = ['giallo', 'green']
     mdx.submit(equil)
 
-def write_production(input, output, temperature=310, steps='10000000'):
-    from htmd.protocols.production_v1 import Production
+def write_production(input_folder, output, temperature=310, steps='10000000'):
+    from htmd.protocols.production_v6 import Production
     md = Production()
     md.temperature = temperature
     md.acemd.bincoordinates = 'output.coor'
     md.acemd.extendedsystem  = 'output.xsc'
     md.acemd.binvelocities=None
     md.acemd.binindex=None
-    md.acemd.run=steps
+    md.runtime=steps
+    md.timestep="steps"
+    md.adaptive=True
     try:
-        md.write(input, output)
+        md.write(input_folder, output)
     except:
-        print ("---> ", input)
+        print ("---> ", input_folder)
 
 def build_worker_charm22star(start_mol, idx, out="/tmp", saltconc=0.015):
+    from random import randint
     topos22 = ['top/top_all22star_prot.rtf',
-            'top/top_water_ions.rtf',
-            "top/top_all36_na.rtf"]
+            'top/top_water_ions.rtf']
     params22 = ['par/par_all22star_prot.prm', 
             'par/par_water_ions.prm']
     outdir = "{}{}_eq".format(out, idx)
@@ -68,9 +70,7 @@ def build_worker_charm22star(start_mol, idx, out="/tmp", saltconc=0.015):
     while keep:
         mol = start_mol.copy()
         if mol.numFrames > 1:
-            from random import randint
             x =  randint(50, start_mol.numFrames-1)
-            print(x)
             mol.dropFrames(keep=[x])
         mol = proteinPrepare(mol)
         mol.set("segid", "P1")
@@ -81,8 +81,7 @@ def build_worker_charm22star(start_mol, idx, out="/tmp", saltconc=0.015):
             keep = False
     smol = solvate(mol, minmax=[[-D, -D, -D], [D, D, D]])
     molbuilt = charmm.build(smol, outdir = outdir, 
-        caps=None,
-     topo=topos22, param=params22, saltconc=saltconc)
+        caps=None, topo=topos22, param=params22, saltconc=saltconc)
     return outdir
 
 def parallel_build(protein, outdir, iterations=1):
@@ -94,11 +93,11 @@ def parallel_build(protein, outdir, iterations=1):
         jobs.append(work)
         work.start()
 
-def parallel_equil(build, equil):
+def parallel_writing(func, build, equil):
     import multiprocessing as mp
     jobs=[]
     for b, e in zip(build, equil):
-        work = mp.Process(target=write_equil,
+        work = mp.Process(target=func,
             args=(b, e))
         jobs.append(work)
         work.start()

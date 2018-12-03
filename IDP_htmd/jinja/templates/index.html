@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>IDP</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="icon" 
+      type="image/png" 
+      href="./protein-17-554033.png">
+</head>
+<body>
+	<div class="container mt-4 mb-4">
+		<div class="jumbotron text-center"> 
+			<h4>Summary for data analysis</h4>
+		</div>
+	<div class="row"> Folder summary
+		{% for folder in folders %}
+			<div class="col-md-12 mt-2"> <h3>{{ folder }}</h3></div>
+			<div class="col-md-12"></div>
+			{% for date in folders[folder] %}
+				<div class="col-md-2">
+					<a href="{{ date }}">{{ date.split("/")[-2] }}</a>
+				</div>
+			{% endfor %}
+		{% endfor %}
+	</div>
+	</div>
+</body>
+</html>
