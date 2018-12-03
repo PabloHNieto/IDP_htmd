@@ -205,20 +205,15 @@ class ModelAnalysis(object):
           xlabels=labels, ylabels=labels,
           plot=False, save=self.out_folder + "/{}.png".format(name))
 
-    def plot_dih(self, name="dihedral"):
+    def plot_dih(self):
         """Creates a plot of the standard deviation of the dihedral angles of the protein by macrostate
-        
-        Parameters
-        ----------
-        name : str, optional
-            Output name for the generated plot
         """
         dih_metric = MetricDihedral(protsel="protein")
         aux_plot(self.model, dih_metric, self.mol, plot_dihedral, skip=self.skip, method=np.std,
-          save=self.out_folder + "/{}.png".format(name), chain_id="P1",
+          save=self.out_folder + "/{}.png".format(self.plot_dihedral), chain_id="P1",
           start_index=self.start_index)
 
-    def plot_mol_contact(self, sel1="noh and protein", sel2="noh and resname MOL", threshold=5):
+    def plot_atom_mol_contact(self, sel1="noh and protein", sel2="noh and resname MOL", threshold=5):
         """Plot a molecule-residue contact map.
         
         Parameters
@@ -231,22 +226,32 @@ class ModelAnalysis(object):
             Threshold distance in angstrom to discrinate contact vs no-contact
         """
         label = ['M{}-{}%'.format(i, np.round(percent*100, 2)) for i, percent in enumerate(self.model.eqDistribution(plot=False))]
-        contact_map_metric = MetricDistance(sel1=sel1, sel2=sel2,
-                                            groupsel1="residue", threshold=threshold, metric="contacts")
-        mapping = contact_map_metric.getMapping(self.mol)
-        aux_plot(self.model, contact_map_metric, self.mol, contact_plot_by_atom, skip=self.skip, method=np.mean,
-                 mapping=mapping, label=label, save=f'${self.out_folder}/${self.plot_mol_contacts}.png')
+        mol_contact_map_metric = MetricDistance(sel1=sel1, sel2=sel2,
+            groupsel1="residue", threshold=threshold, metric="contacts")
+        mapping = mol_contact_map_metric.getMapping(self.mol)
+        aux_plot(self.model, mol_contact_map_metric, self.mol, contact_plot_by_atom, skip=self.skip, method=np.mean,
+                 mapping=mapping, label=label, save=f'{self.out_folder}/{self.plot_mol_contacts}_by_atom.png')
 
-    def plot_atom_mol_contact(self, threshold=4):
-        labels = generate_labels(mol, 'MOL')
-        all_contact_metric = MetricDistance(sel1="noh and protein or noh and resname MOL",
-                                            sel2="noh and protein or noh and resname MOL",
-                                            groupsel1="residue", groupsel2="residue", threshold=threshold, metric="contacts")
-        mapping = all_contact_metric.getMapping(self.mol)
-        aux_plot(self.model, all_contact_metric, self.mol, contact_plot, np.mean, ligand=True,
-                 mapping=mapping, cols=2, rows=int(model.macronum/2)+model.macronum%2,
+    def plot_mol_contact(self, sel1="noh and protein", sel2="noh and resname MOL", threshold=4):
+        """Plot a molecule-residue contact map.
+        
+        Parameters
+        ----------
+        sel1 : str, optional
+            VMD selection. Grouped by residue.
+        sel2 : str, optional
+            VMD selection
+        threshold : int, optional
+            Threshold distance in angstrom to discrinate contact vs no-contact
+        """
+        labels = generate_labels(self.mol, 'MOL')
+        mol_contact_metric = MetricDistance(sel1=sel1, sel2=sel2, groupsel1="residue", groupsel2="all", 
+            threshold=threshold, metric="contacts")
+        mapping = mol_contact_metric.getMapping(self.mol)
+        aux_plot(self.model, mol_contact_metric, self.mol, contact_plot, np.mean, ligand=True,
+                 mapping=mapping, cols=2, rows=int(self.model.macronum/2)+self.model.macronum%2,
                  xlabels=labels, ylabels=labels,
-                 plot=False, save=f'${self.out_folder}/${self.plot_mol_contacts}_by_atom.png')
+                 plot=False, save=f'{self.out_folder}/{self.plot_mol_contacts}.png')
 
     def generate_html_summary(self):
         """Generates a html report with all the data generated
