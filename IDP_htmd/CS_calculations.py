@@ -154,6 +154,28 @@ class CScalculations():
 
     @staticmethod
     def plotCSdiff(ax, data, labels, limit, title=None, xlabels=None):
+        """Summary
+        
+        Parameters
+        ----------
+        ax : pyplot.ax
+            Ax to plot the data
+        data : TYPE
+            Array with the difference
+        labels : TYPE
+            Description
+        limit : TYPE
+            Description
+        title : None, optional
+            Description
+        xlabels : None, optional
+            Description
+        
+        Returns
+        -------
+        TYPE
+            Description
+        """
         style_pallete = [{'edgecolor':'#3b5998', 'color':'#3b5998'},
             {'edgecolor':'red', 'color':(0, 0, 0, 0)}]
 
@@ -182,6 +204,25 @@ class CScalculations():
 
     @staticmethod
     def plotCSdata(data, atomtypes, labels=None, title=None, plot=True, save=None, **kwargs):
+        """Plot CS differences 
+        
+        Parameters
+        ----------
+        data : []
+            Array containing a list for each atomtype differences 
+        atomtypes : []
+            Array of atomtype where to be compared. It must have the same length of data
+        labels : None, optional
+            Description
+        title : None, optional
+            Description
+        plot : bool, optional
+            Description
+        save : None, optional
+            Description
+        **kwargs
+            Description
+        """
         import matplotlib.pyplot as plt
         import numpy as np
 
@@ -205,6 +246,26 @@ class CScalculations():
 
     @staticmethod
     def cleanBMRB(filename, outdir, correct_resid=0, rmin=None, rmax=None):
+        """Read BMRB file
+        The file has to be previously trimmed by other means to only have 
+        the chemical shift section
+        Parameters
+        ----------
+        filename : str
+            BMRB text files
+        outdir : str
+            Folder to write the ooutput
+        correct_resid : int, optional
+            Correction of the index of the aminoacids
+        rmin : int, optional
+            Starting residue 
+        rmax : int, optional
+            Define the last residue number of the strecht
+        Returns
+        -------
+        pandas.Dataframe
+            Contains columns for CS, atomtype, atomname, residue number and residue name
+        """
         import pandas as pd
         with open(filename, 'r') as myfile:
             headers = []
