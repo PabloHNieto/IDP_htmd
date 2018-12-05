@@ -4,7 +4,7 @@ from IDP_htmd.IDP_model import *
 # from IDP_htmd.model_utils import *
 # from IDP_htmd.MetricRadiusGyration import MetricRG
 import matplotlib.pyplot as plt
-plt.switch_backend('agg')
+
 
 
 class ModelAnalysis(object):
@@ -190,19 +190,12 @@ class ModelAnalysis(object):
         threshold : int, optional
             Threshold distance in angstrom to discrinate contact vs no-contact
         """
-        from copy import deepcopy
-        mol = deepcopy(self.mol)
-        mol.filter("backbone or " + selection)
-        labels = generate_labels(mol)
-
         contact_metric = MetricDistance(sel1=selection, sel2=selection,
-                                   groupsel1="residue", groupsel2="residue", threshold=threshold, metric="contacts")
-        mol = deepcopy(self.mol)
+            groupsel1="residue", groupsel2="residue", threshold=threshold, metric="contacts")
         
-        mapping = contact_metric.getMapping(mol)
+        mapping = contact_metric.getMapping(self.mol)
         aux_plot(self.model, contact_metric, self.mol, contact_plot, skip=self.skip, method=np.mean,
           mapping=mapping, cols=2, rows=int(self.model.macronum/2)+self.model.macronum%2,
-          xlabels=labels, ylabels=labels,
           plot=False, save=self.out_folder + "/{}.png".format(name))
 
     def plot_dih(self):
@@ -210,8 +203,8 @@ class ModelAnalysis(object):
         """
         dih_metric = MetricDihedral(protsel="protein")
         aux_plot(self.model, dih_metric, self.mol, plot_dihedral, skip=self.skip, method=np.std,
-          save=self.out_folder + "/{}.png".format(self.plot_dihedral), chain_id="P1",
-          start_index=self.start_index)
+            save=self.out_folder + "/{}.png".format(self.plot_dihedral), chain_id="P1",
+            start_index=self.start_index)
 
     def plot_atom_mol_contact(self, sel1="noh and protein", sel2="noh and resname MOL", threshold=5):
         """Plot a molecule-residue contact map.
@@ -229,8 +222,9 @@ class ModelAnalysis(object):
         mol_contact_map_metric = MetricDistance(sel1=sel1, sel2=sel2,
             groupsel1="residue", threshold=threshold, metric="contacts")
         mapping = mol_contact_map_metric.getMapping(self.mol)
+
         aux_plot(self.model, mol_contact_map_metric, self.mol, contact_plot_by_atom, skip=self.skip, method=np.mean,
-                 mapping=mapping, label=label, save=f'{self.out_folder}/{self.plot_mol_contacts}_by_atom.png')
+            mapping=mapping, label=label, save=f'{self.out_folder}/{self.plot_mol_contacts}_by_atom.png')
 
     def plot_mol_contact(self, sel1="noh and protein", sel2="noh and resname MOL", threshold=4):
         """Plot a molecule-residue contact map.
@@ -244,14 +238,14 @@ class ModelAnalysis(object):
         threshold : int, optional
             Threshold distance in angstrom to discrinate contact vs no-contact
         """
-        labels = generate_labels(self.mol, 'MOL')
-        mol_contact_metric = MetricDistance(sel1=sel1, sel2=sel2, groupsel1="residue", groupsel2="all", 
-            threshold=threshold, metric="contacts")
-        mapping = mol_contact_metric.getMapping(self.mol)
-        aux_plot(self.model, mol_contact_metric, self.mol, contact_plot, np.mean, ligand=True,
-                 mapping=mapping, cols=2, rows=int(self.model.macronum/2)+self.model.macronum%2,
-                 xlabels=labels, ylabels=labels,
-                 plot=False, save=f'{self.out_folder}/{self.plot_mol_contacts}.png')
+        labels = generate_labels(self.mol)
+        mol_contact_map_metric = MetricDistance(sel1=sel1, sel2=sel2, 
+            groupsel1="residue", groupsel2="all", threshold=5, metric="contacts")
+
+        mapping = mol_contact_map_metric.getMapping(self.mol)
+        aux_plot(self.model, mol_contact_map_metric, self.mol, plot_contacts, skip=self.skip, method=np.mean,
+            mod=self.model, title="Contacts by residue",
+            plot=False, save=f'{self.out_folder}/{self.plot_mol_contacts}.png')
 
     def generate_html_summary(self):
         """Generates a html report with all the data generated
