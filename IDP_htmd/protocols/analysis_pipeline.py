@@ -1,4 +1,4 @@
-# from htmd.ui import *
+from htmd.ui import *
 from IDP_htmd.IDP_analysis import *
 from IDP_htmd.IDP_model import *
 # from IDP_htmd.model_utils import *
@@ -55,6 +55,7 @@ class ModelAnalysis(object):
     ticalag : int
         lag to be used for tica.
     """
+    
     def __init__(self, input_folder, output_folder):
         self.input_folder = input_folder
         self.out_folder = output_folder
@@ -77,10 +78,12 @@ class ModelAnalysis(object):
         self.model = None
         self.bulk_split = None
         self.start_index = 0
+        self.kinetics = False
+        self.temperature = 310
+        self.concentration = None
 
         if (not self.out_folder or not self.input_folder):
             print("Not data or out folder provided")
-
 
     def perfom_analysis(self):
         """
@@ -108,6 +111,8 @@ class ModelAnalysis(object):
         if self.cluster_scan:
             scan_clusters(self.model, self.cluster_scan, self.out_folder)
 
+        if self.kinetics:
+            self.calc_kinetics()
         self.generate_html_summary()
 
     def write_parameters(self, excluded=['out_folder', 'input_folder', 'model', 'mol', 'plot_contacts', 'plot_dihedral',
@@ -138,6 +143,7 @@ class ModelAnalysis(object):
         Calling this function results in self.model to be and htmd.model.Model class
         """
         from htmd.model import Model
+        from htmd.molecule.molecule import Molecule
 
         if not self.model:
             from IDP_htmd.IDP_analysis import analyze_folder
@@ -275,6 +281,29 @@ class ModelAnalysis(object):
 
             r = Render("analysis", f"{self.out_folder}/IDP_summary", info)
 
+    def calc_kinetics(self):
+        """Calculates kinetics rates for the model
+        
+        Returns
+        -------
+        pandas.DataFrame
+            Dataframe containing value for mfpton, mfptoff, kon, koff, kdeq and g0eq
+            from a source macro to each other macrostate
+        """
+        import pandas as pd
+        
+        columns = ['mfpton', 'mfptoff', 'kon', 'koff', 'kdeq', 'g0eq']
+        kin_summary = pd.DataFrame(columns=columns)
+        source = self.model.macronum - 1 if self.bulk_split else None
+        for  i in range(self.model.macronum):
+            kin_rates = Kinetics(self.model, self.temperature, 
+                concentration=self.concentration, source=source, sink=i).getRates()
+            source = kin.source
+            row = [ kin[i] for i in columns ]
+            kin_summary.append(row, ignore_index=True)ignore_index
+        kin_summary.to_csv(f'{self.out_folder}kin.csv')
+
+        return kin_summary
 
 if __name__ == '__main__':
     from htmd.projections.metricdistance import MetricDistance
@@ -290,7 +319,7 @@ if __name__ == '__main__':
                 metric="contacts",
                 threshold=5,
                 groupsel1="residue",
-                groupsel2="residue"),
+                groupsel2="residue")
             ]
 
     # mt = Model()
