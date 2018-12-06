@@ -268,6 +268,13 @@ class ModelAnalysis(object):
             print(e)
             js = None
 
+        try:
+            import pandas as pd
+            kinetics = pd.read_csv(f'{self.out_folder}/kin.csv')
+        except Exception as e:
+            print(e)
+            kinetics = None
+
         if len(pictures)>0:
             info = {
                 'date': date,
@@ -279,9 +286,11 @@ class ModelAnalysis(object):
                 js['model'].pop('metrics', None)
                 info['parameters'] = js
 
+            if kinetics:
+                info['kinetics'] = kinetics
             r = Render("analysis", f"{self.out_folder}/IDP_summary", info)
 
-    def calc_kinetics(self):
+    def calc_kinetics(self, source):
         """Calculates kinetics rates for the model
         
         Returns
@@ -292,15 +301,18 @@ class ModelAnalysis(object):
         """
         import pandas as pd
         
-        columns = ['mfpton', 'mfptoff', 'kon', 'koff', 'kdeq', 'g0eq']
+        columns = ['path', 'mfpton', 'mfptoff', 'kon', 'koff', 'kdeq', 'g0eq']
         kin_summary = pd.DataFrame(columns=columns)
-        source = self.model.macronum - 1 if self.bulk_split else None
+        # source = self.model.macronum - 1 if self.bulk_split else None
         for  i in range(self.model.macronum):
             kin_rates = Kinetics(self.model, self.temperature, 
                 concentration=self.concentration, source=source, sink=i).getRates()
-            source = kin.source
-            row = [ kin[i] for i in columns ]
-            kin_summary.append(row, ignore_index=True)
+            # source = kin.source
+            # import pdb;pdb.set_trace();
+            # row = [ kin_rates.__dict__[i] for i in columns ]
+            row = kin_rates.__dict__.copy()
+            row['path'] = f'{source}-->{i}'
+            kin_summary = kin_summary.append(row, ignore_index=True)
         kin_summary.to_csv(f'{self.out_folder}kin.csv')
 
         return kin_summary
