@@ -169,6 +169,8 @@ class ModelAnalysis(object):
 
         self.mol = Molecule(self.model.data.simlist[0].molfile)
 
+    def load_parameters(self, file_name):
+        pass
 
     def additional_plots(self):
         """Createa additinal plot following the parameters set for the instance of the class
@@ -269,8 +271,8 @@ class ModelAnalysis(object):
             js = None
 
         try:
-            import pandas as pd
-            kinetics = pd.read_csv(f'{self.out_folder}/kin.csv')
+            with open(f"{self.out_folder}/kin.json", "r") as myfile:
+                kinetics = json.load(myfile)
         except Exception as e:
             print(e)
             kinetics = None
@@ -288,10 +290,18 @@ class ModelAnalysis(object):
 
             if kinetics:
                 info['kinetics'] = kinetics
+
             r = Render("analysis", f"{self.out_folder}/IDP_summary", info)
 
-    def calc_kinetics(self, source):
+    def calc_kinetics(self, source=None):
         """Calculates kinetics rates for the model
+        
+        Calculates all kinetics parameters starting from one source state to all other possible sinks
+
+        Parameters
+        ----------
+        source : int | optional
+            Macrostate to be used as a source state.
         
         Returns
         -------
@@ -303,17 +313,26 @@ class ModelAnalysis(object):
         
         columns = ['path', 'mfpton', 'mfptoff', 'kon', 'koff', 'kdeq', 'g0eq']
         kin_summary = pd.DataFrame(columns=columns)
-        # source = self.model.macronum - 1 if self.bulk_split else None
+
+        #Will store strings of scientific notations (to be displayed in html)
+        str_kin_summary = pd.DataFrame(columns=columns) 
+
+        if (self.bulk_split and not source):
+            source = self.model.macronum - 1 
+
         for  i in range(self.model.macronum):
             kin_rates = Kinetics(self.model, self.temperature, 
                 concentration=self.concentration, source=source, sink=i).getRates()
-            # source = kin.source
-            # import pdb;pdb.set_trace();
-            # row = [ kin_rates.__dict__[i] for i in columns ]
             row = kin_rates.__dict__.copy()
             row['path'] = f'{source}-->{i}'
             kin_summary = kin_summary.append(row, ignore_index=True)
-        kin_summary.to_csv(f'{self.out_folder}kin.csv')
+            
+            #Creating values with string of scientific notation
+            str_row = { col: "{:.2E}".format(row[col]) for col in columns if col is not 'path' }
+            str_row['path'] = f'{source}-->{i}'
+            str_kin_summary = str_kin_summary.append(str_row, ignore_index=True)
+
+        str_kin_summary.to_json(f'{self.out_folder}kin.json', orient='split', index=False)
 
         return kin_summary
 
