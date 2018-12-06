@@ -300,7 +300,7 @@ class ModelAnalysis(object):
                 concentration=self.concentration, source=source, sink=i).getRates()
             source = kin.source
             row = [ kin[i] for i in columns ]
-            kin_summary.append(row, ignore_index=True)ignore_index
+            kin_summary.append(row, ignore_index=True)
         kin_summary.to_csv(f'{self.out_folder}kin.csv')
 
         return kin_summary
