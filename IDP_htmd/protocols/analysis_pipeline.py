@@ -4,6 +4,7 @@ from IDP_htmd.IDP_model import *
 # from IDP_htmd.model_utils import *
 # from IDP_htmd.MetricRadiusGyration import MetricRG
 import matplotlib.pyplot as plt
+plt.switch_backend('agg')
 
 
 
@@ -12,7 +13,7 @@ class ModelAnalysis(object):
     
     Attributes
     ----------
-    bulk_split : TYPE
+    bulk_split : htmd.metric.metricData
         Metric to create a new macrostate using model.utils.bulk_split
     cluster : int
         Number of clusters to create the MSM
@@ -108,11 +109,13 @@ class ModelAnalysis(object):
 
         self.additional_plots()
 
+        if self.kinetics:
+            self.calc_kinetics()
+
         if self.cluster_scan:
             scan_clusters(self.model, self.cluster_scan, self.out_folder)
 
-        if self.kinetics:
-            self.calc_kinetics()
+
         self.generate_html_summary()
 
     def write_parameters(self, excluded=['out_folder', 'input_folder', 'model', 'mol', 'plot_contacts', 'plot_dihedral',
@@ -176,7 +179,7 @@ class ModelAnalysis(object):
         """Createa additinal plot following the parameters set for the instance of the class
         """
         if self.plot_dihedral:
-            self.plot_dih(self.plot_dihedral)
+            self.plot_dih()
 
         if self.plot_mol_contacts:
             self.plot_mol_contact()
