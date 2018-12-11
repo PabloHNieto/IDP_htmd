@@ -47,31 +47,39 @@ def metastable_states(model):
         metastable_sets.append(np.where(model.macro_ofmicro == i)[0])
     model.metastable_sets = np.array(metastable_sets)
 
-def get_data(mod, metr, skip=1):
+def get_data(model, metr, skip=1):
     """ Returns the projected data of metric applied to a model
 
         Parameters
         ----------
-        mod : htmd.Model
+        mod : htmd.model.Model
             Model to get the simlist
-        metric : htmd.MetricData
+        metric : htmd.projections.MetricData
             MetricData with the metric we want to project
         skip : int
             Frames to skip while projecting the data. Default = 1
         """
-    metric = Metric(mod.data.simlist, skip = skip)
+    metric = Metric(model.data.simlist, skip = skip)
     metric.set(metr)
     data = metric.project()
     return data
 
 def create_bulk(model, metric):
-    from IDP_htmd.IDP_model import get_data
+    """Creates a bulk macrosates
+    Modifies passed model
+    It is intended to be used in ligand binding escenarios.
+    Parameters
+    ----------
+    model : TYPE
+        Model to extract a bulk
+    metric : TYPE
+        Metric to describe a bulk vs not-bulk situation. In general is the contacts 
+        between protein and ligand selection with groupsels set to 'all'
+    """
     data = get_data(model, metric)
     data_by_micro = np.array(getStateStatistic(model, data, states=range(model.micronum), statetype="micro"))
     min_contacts = np.where(data_by_micro == np.min(data_by_micro))[0]
     model.createState(min_contacts)
-    metastable_states(model)
-    print(min_contacts)
 
 def cluster_macro(model, data, macro, method=np.mean):
     from sklearn.cluster import AffinityPropagation, MiniBatchKMeans, DBSCAN, Birch
@@ -96,6 +104,18 @@ def compute_all_mfpt(model):
     return np.array(all_mfpt)
 
 def scan_clusters(model, nclusters, out_dir):
+    """Create models 
+    
+    In order to assess the effect on timescales using different clusters in a model.
+    Parameters
+    ----------
+    model : htmd.model.Model
+        Model class we want to perfom the analysis
+    nclusters : int[]
+        Array of clusters to be tested
+    out_dir : str
+        Directory to save the generated plots
+    """
     for i in nclusters:
         model.data.cluster(MiniBatchKMeans(n_clusters=i), mergesmall=5)
         new_mod = Model(model.data)

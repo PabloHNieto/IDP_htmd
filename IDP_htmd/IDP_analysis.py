@@ -148,13 +148,16 @@ def aux_plot(model, metric, mol, plot_func,skip=1, method=np.mean, **kwargs):
         Description
     """
     from IDP_htmd.model_utils import get_data
-    from htmd.ui import getStateStatistic
+    from htmd.model import getStateStatistic
     import numpy as np
     data = get_data(model, metric, skip=skip)
     data_summary = getStateStatistic(model, data, 
         method=method, states=range(model.macronum),
         statetype="macro")
-    plot_func(data_summary, mol, **kwargs)
+    try:
+        plot_func(data_summary, mol, **kwargs)
+    except Exception as e:
+        print("Plotting error: ", e)
 
 
 def bootstrap_model (data, rounds, folder, model_function=None, fraction=0.8, 

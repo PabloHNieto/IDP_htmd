@@ -74,11 +74,10 @@ class ModelAnalysis(object):
         self.plot_dihedral = 'dihedral'
         self.plot_contacts = None
         self.plot_mol_contacts = False
-        self.start_index = 1
+        self.start_index = 0
         self.cluster_scan = False
         self.model = None
         self.bulk_split = None
-        self.start_index = 0
         self.kinetics = False
         self.temperature = 310
         self.concentration = None
@@ -274,7 +273,7 @@ class ModelAnalysis(object):
             js = None
 
         try:
-            with open(f"{self.out_folder}/kin.json", "r") as myfile:
+            with open(f"{self.out_folder}kin.json", "r") as myfile:
                 kinetics = json.load(myfile)
         except Exception as e:
             print(e)
