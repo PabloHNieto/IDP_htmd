@@ -1,5 +1,8 @@
-from htmd.ui import *
+# from htmd.model import Model
+# from htmd.molecule.molecule import Molecule
+# from htmd.projections.metricdistance import MetricDistance
 from IDP_htmd.IDP_analysis import *
+from IDP_htmd.model_utils import aux_plot
 from IDP_htmd.IDP_model import *
 # from IDP_htmd.model_utils import *
 # from IDP_htmd.MetricRadiusGyration import MetricRG
@@ -86,16 +89,12 @@ class ModelAnalysis(object):
             print("Not data or out folder provided")
 
     def perfom_analysis(self):
-        """
-
-        
-        Returns
-        -------
-        TYPE
-            Description
+        """Perform a MSM analysis given the data
+            The pipeline includes loading or creatin a model,
+            plotting of dihedrals and contacts matrix, and 
+            the rendering of a html summary of the data
         """
         import os 
-        from htmd.molecule.molecule import Molecule
         from IDP_htmd.model_utils import scan_clusters
 
         # Checking essential paramenters
@@ -113,7 +112,6 @@ class ModelAnalysis(object):
 
         if self.cluster_scan:
             scan_clusters(self.model, self.cluster_scan, self.out_folder)
-
 
         self.generate_html_summary()
 
@@ -200,6 +198,7 @@ class ModelAnalysis(object):
         threshold : int, optional
             Threshold distance in angstrom to discrinate contact vs no-contact
         """
+        from htmd.projections.metricdistance import MetricDistance
         contact_metric = MetricDistance(sel1=selection, sel2=selection,
             groupsel1="residue", groupsel2="residue", threshold=threshold, metric="contacts")
         
@@ -211,6 +210,8 @@ class ModelAnalysis(object):
     def plot_dih(self):
         """Creates a plot of the standard deviation of the dihedral angles of the protein by macrostate
         """
+        from htmd.projections.metricdihedral import MetricDihedral
+
         dih_metric = MetricDihedral(protsel="protein")
         aux_plot(self.model, dih_metric, self.mol, plot_dihedral, skip=self.skip, method=np.std,
             save=self.out_folder + "/{}.png".format(self.plot_dihedral), chain_id="P1",
@@ -228,6 +229,8 @@ class ModelAnalysis(object):
         threshold : int, optional
             Threshold distance in angstrom to discrinate contact vs no-contact
         """
+        from htmd.projections.metricdistance import MetricDistance
+
         label = ['M{}-{}%'.format(i, np.round(percent*100, 2)) for i, percent in enumerate(self.model.eqDistribution(plot=False))]
         mol_contact_map_metric = MetricDistance(sel1=sel1, sel2=sel2,
             groupsel1="residue", threshold=threshold, metric="contacts")
@@ -248,6 +251,8 @@ class ModelAnalysis(object):
         threshold : int, optional
             Threshold distance in angstrom to discrinate contact vs no-contact
         """
+        from htmd.projections.metricdistance import MetricDistance
+
         labels = generate_labels(self.mol)
         mol_contact_map_metric = MetricDistance(sel1=sel1, sel2=sel2, 
             groupsel1="residue", groupsel2="all", threshold=5, metric="contacts")
@@ -312,6 +317,7 @@ class ModelAnalysis(object):
             from a source macro to each other macrostate
         """
         import pandas as pd
+        from htmd.kinetics import Kinetics
         
         columns = ['path', 'mfpton', 'mfptoff', 'kon', 'koff', 'kdeq', 'g0eq']
         kin_summary = pd.DataFrame(columns=columns)

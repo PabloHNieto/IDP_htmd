@@ -120,3 +120,36 @@ def scan_clusters(model, nclusters, out_dir):
         model.data.cluster(MiniBatchKMeans(n_clusters=i), mergesmall=5)
         new_mod = Model(model.data)
         new_mod.plotTimescales(plot=False, save=out_dir+"1_its-{}_clu".format(i))
+
+
+def aux_plot(model, metric, mol, plot_func,skip=1, method=np.mean, **kwargs):
+    """Summary
+    
+    Parameters
+    ----------
+    model : TYPE
+        Model to extract the data
+    metric : TYPE
+        Metric object to project the simlist of the model
+    mol : TYPE
+        Description
+    plot_func : TYPE
+        Plotting function to plot the projected data
+    skip : int, optional
+        Skip frames from the simlist
+    method : TYPE, optional
+        Method to perform the aggregation of the data by macrostate
+    **kwargs
+        Description
+    """
+    from IDP_htmd.model_utils import get_data
+    from htmd.model import getStateStatistic
+    import numpy as np
+    data = get_data(model, metric, skip=skip)
+    data_summary = getStateStatistic(model, data, 
+        method=method, states=range(model.macronum),
+        statetype="macro")
+    try:
+        plot_func(data_summary, mol, **kwargs)
+    except Exception as e:
+        print("Plotting error: ", e)
