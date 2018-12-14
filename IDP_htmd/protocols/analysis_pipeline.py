@@ -169,9 +169,6 @@ class ModelAnalysis(object):
 
         self.mol = Molecule(self.model.data.simlist[0].molfile)
 
-    def load_parameters(self, file_name):
-        pass
-
     def additional_plots(self):
         """Createa additinal plot following the parameters set for the instance of the class
         """
@@ -266,6 +263,7 @@ class ModelAnalysis(object):
         """Generates a html report with all the data generated
         """
         from IDP_htmd.jinja.render import Render
+        from glob import glob
         import json
 
         date = self.out_folder.split("/")[-2]

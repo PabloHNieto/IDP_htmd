@@ -140,7 +140,7 @@ def aux_plot(model, metric, mol, plot_func,skip=1, method=np.mean, **kwargs):
     method : TYPE, optional
         Method to perform the aggregation of the data by macrostate
     **kwargs
-        Description
+        Additional arguments for the plotting function
     """
     from IDP_htmd.model_utils import get_data
     from htmd.model import getStateStatistic
