@@ -294,7 +294,7 @@ class ModelAnalysis(object):
             if kinetics:
                 info['kinetics'] = kinetics
 
-            r = Render("analysis", f"{self.out_folder}/IDP_summary", info)
+            r = Render("analysis", f"{self.out_folder}IDP_summary", info)
 
     def calc_kinetics(self, source=None):
         """Calculates kinetics rates for the model

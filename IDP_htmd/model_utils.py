@@ -7,7 +7,7 @@ def get_params_model(model):
     'macroN' : model.macronum
   }
 
-def save_structures(model, outdir, states, numsamples, statetype, 
+def save_structures(model, outdir, settingstates, numsamples, statetype, 
     modifications=None, **kwargs):
     import os
     from glob import glob
@@ -25,7 +25,8 @@ def save_structures(model, outdir, states, numsamples, statetype,
                 out_name = "{}/{}_{}_{}.pdb".format(outdir, statetype[idx], i , frame)
                 struct.frame = frame
                 struct.resname[struct.resname=='HSD'] = "HIS"
-                struct.write(out_name, sel="not name CAY CY OY NT CAT")
+                # struct.write(out_name, sel="not name CAY CY OY NT CAT")
+                struct.write(out_name, sel="protein")
     return glob(outdir+"/*pdb")
 
 def get_weighted(model, total_struct):
@@ -117,6 +118,8 @@ def scan_clusters(model, nclusters, out_dir):
     out_dir : str
         Directory to save the generated plots
     """
+    from htmd.model import Model
+    from htmd.clustering import MiniBatchKMeans
     for i in nclusters:
         model.data.cluster(MiniBatchKMeans(n_clusters=i), mergesmall=5)
         new_mod = Model(model.data)
