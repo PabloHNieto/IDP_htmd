@@ -125,7 +125,6 @@ class ModelAnalysis(object):
             List of excluded parameters not be included in the output file
         """
         import json
-        # Writing model parms to file
 
         json_model = self.__dict__.copy()
         json_model['metrics'] = { "{}-{}".format(idx, str(met.__class__).split("'")[-2].split(".")[-1]): met.__dict__ for idx, met in enumerate(self.metrics)}
@@ -134,7 +133,7 @@ class ModelAnalysis(object):
             json_model.pop(key, None)
         json_info = {'model': json_model}
 
-        with open(self.out_folder+'file.txt', 'w') as file:
+        with open(f'{self.out_folder}file.txt', 'w') as file:
           file.write(json.dumps(json_info))
 
     def handle_model(self):
@@ -165,7 +164,6 @@ class ModelAnalysis(object):
 
         if isinstance(self.model, Model):
             print("Model loaded")
-            pass
 
         self.mol = Molecule(self.model.data.simlist[0].molfile)
 
@@ -342,6 +340,17 @@ class ModelAnalysis(object):
 
         return kin_summary
 
+    def sasa_variation(self):
+        from htmd.projections.metricsasa import MetricSasa
+
+        labels = generate_labels(self.mol)
+        mol_contact_map_metric = MetricSasa(sel='protein', probeRadius=1.4, numSpherePoints=500, mode='residue')
+
+        mapping = mol_contact_map_metric.getMapping(self.mol)
+        aux_plot(self.model, mol_contact_map_metric, self.mol, plot_contacts, normalize=False, skip=self.skip, method=np.mean,
+            mod=self.model, title="Contacts by residue", vmax=None,
+            plot=False, save=f'{self.out_folder}/no_sasa_test.png')
+
 if __name__ == '__main__':
     from htmd.projections.metricdistance import MetricDistance
     from htmd.model import Model
@@ -359,18 +368,20 @@ if __name__ == '__main__':
                 groupsel2="residue")
             ]
 
-    # mt = Model()
-    # mt.load("/home/pablo/testModel/model.dat")
-    # mt.model = model
+    model = Model()
+    model.load("/home/pablo/testModel/model.dat")
+    mt.model = model
+    mt.handle_model()
+    mt.sasa_variation()
     # mt.model = "/home/pablo/testModel/model.dat"
     # mt.plot_dihedral = "2_dihedral"
-    mt.macronum = 4
-    mt.plot_contacts = [
-        ('all_contacts', 'noh and protein', 5),
-        ('backbone', 'noh and backbone', 5),
-        ('sidechain', 'noh and sidechain', 4),
-    ]
-    mt.write_parameters()
-    mt.generate_html_summary()
+    # mt.macronum = 4
+    # mt.plot_contacts = [
+    #     ('all_contacts', 'noh and protein', 5),
+    #     ('backbone', 'noh and backbone', 5),
+    #     ('sidechain', 'noh and sidechain', 4),
+    # ]
+    # mt.write_parameters()
+    # mt.generate_html_summary()
 
     # mt.perfom_analysis()

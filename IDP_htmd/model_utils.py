@@ -1,4 +1,5 @@
-from htmd.ui import *
+# from htmd.ui import *
+import numpy as np
 
 def get_params_model(model):
     return {'clusters' : len(model.micro_ofcluster),
@@ -29,7 +30,6 @@ def save_structures(model, outdir, states, numsamples, statetype,
 
 def get_weighted(model, total_struct):
     import numpy as np
-    print("here")
     population = model.eqDistribution(plot=False)
     out_structs = np.array([int(total_struct*pop) for pop in population ])
 
@@ -59,6 +59,7 @@ def get_data(model, metr, skip=1):
         skip : int
             Frames to skip while projecting the data. Default = 1
         """
+    from htmd.projections.metric import Metric
     metric = Metric(model.data.simlist, skip = skip)
     metric.set(metr)
     data = metric.project()
@@ -122,7 +123,7 @@ def scan_clusters(model, nclusters, out_dir):
         new_mod.plotTimescales(plot=False, save=out_dir+"1_its-{}_clu".format(i))
 
 
-def aux_plot(model, metric, mol, plot_func,skip=1, method=np.mean, **kwargs):
+def aux_plot(model, metric, mol, plot_func,skip=1, normalize=False, method=np.mean, **kwargs):
     """Summary
     
     Parameters
@@ -137,6 +138,8 @@ def aux_plot(model, metric, mol, plot_func,skip=1, method=np.mean, **kwargs):
         Plotting function to plot the projected data
     skip : int, optional
         Skip frames from the simlist
+    normalize : bool, optional
+        Whether to normalize by the number of atoms
     method : TYPE, optional
         Method to perform the aggregation of the data by macrostate
     **kwargs
@@ -149,6 +152,11 @@ def aux_plot(model, metric, mol, plot_func,skip=1, method=np.mean, **kwargs):
     data_summary = getStateStatistic(model, data, 
         method=method, states=range(model.macronum),
         statetype="macro")
+    
+    if normalize:
+        _, counts = np.unique(mol.resid, return_counts = True)
+        data_summary = np.array(data_summary) / counts
+
     try:
         plot_func(data_summary, mol, **kwargs)
     except Exception as e:
