@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=500, ticadim=5,
     tica_lag=20, model_lag=10, model_units='ns', macro_N=10, bulk_split=False, fes=True, rg_analysis=True, save=False): 
     """Analysis script for create a Markov State Model
@@ -42,7 +43,12 @@ def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=50
     :class:`Model`
         Final model
     """
-    from htmd.ui import simlist, TICA, MiniBatchKMeans, Metric, Model, Molecule
+    from htmd.model import Model
+    from htmd.molecule.molecule import Molecule
+    from htmd.projections.tica import TICA
+    from htmd.simlist import simlist
+    from htmd.projections.metric import Metric 
+    from sklearn.cluster import MiniBatchKMeans
     from IDP_htmd.IDP_model import plot_RG 
     from IDP_htmd.model_utils import create_bulk
     from glob import glob
@@ -58,6 +64,9 @@ def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=50
     metr = Metric(fsims, skip=skip)
     metr.set(metrics)
     data = metr.project()
+    
+    #Check if this gives problems to ITS
+    data.dropTraj()
 
     if ticadim:
         tica = TICA(data, tica_lag)
@@ -72,15 +81,14 @@ def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=50
             out_data.cluster(MiniBatchKMeans(n_clusters=clu), mergesmall=5)
             x = False
         except Exception as e:
-            print("Error " + str(e))
-            print("Trying again")
+            raise Exception("Error " + str(e))
 
     model = Model(out_data)
-    model.plotTimescales(plot=False, save=out_folder+"1_its.png")
+    model.plotTimescales(plot=False, save=f"{out_folder}/1_its.png")
 
     if macro_N:
         model.markovModel(model_lag, macro_N, units=model_units)
-        model.eqDistribution(plot=False, save=out_folder+"1.2_eqDistribution.png")
+        model.eqDistribution(plot=False, save=f"{out_folder}/1.2_eqDistribution.png")
         
         if bulk_split:
             try:
@@ -94,14 +102,14 @@ def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=50
             from IDP_htmd.IDP_analysis import rg_analysis
             mol = Molecule(model.data.simlist[0].molfile)
             rg_data = rg_analysis(model, skip=skip)
-            plot_RG(rg_data, mol,  save=out_folder+"1.4_rg.png")
+            plot_RG(rg_data, mol,  save=f"{out_folder}/1.4_rg.png")
 
         if fes and ticadim:
             model.plotFES(0, 1, temperature=310, states=True,
-                plot=False, save=out_folder+"1.3_fes.png")
+                plot=False, save=f"{out_folder}/1.3_fes.png")
 
     if save:
-        model.save(out_folder + "model.dat")
+        model.save(f"{out_folder}/model.dat")
 
     return model
 

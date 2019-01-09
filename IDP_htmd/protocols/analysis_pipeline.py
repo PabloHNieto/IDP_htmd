@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 
 
-
 class ModelAnalysis(object):
     """Pipeline for the analysis of MD data usin MSM using HTMD package
     
@@ -60,6 +59,7 @@ class ModelAnalysis(object):
         lag to be used for tica.
     """
     
+    
     def __init__(self, input_folder, output_folder):
         self.input_folder = input_folder
         self.out_folder = output_folder
@@ -88,6 +88,7 @@ class ModelAnalysis(object):
         if (not self.out_folder or not self.input_folder):
             print("Not data or out folder provided")
 
+    
     def perfom_analysis(self):
         """Perform a MSM analysis given the data
             The pipeline includes loading or creatin a model,
@@ -101,6 +102,7 @@ class ModelAnalysis(object):
         if (not self.metrics):
             print("Metrics have not been set")
             return 
+
         os.makedirs(self.out_folder, exist_ok=True)
 
         self.handle_model()
@@ -110,11 +112,15 @@ class ModelAnalysis(object):
         if self.kinetics:
             self.calc_kinetics()
 
-        if self.cluster_scan:
-            scan_clusters(self.model, self.cluster_scan, self.out_folder)
+        try:
+            if self.cluster_scan:
+                scan_clusters(self.model, self.cluster_scan, self.out_folder)
+        except Exception as e:
+            raise Exception(f'Scann cluster {e}')
 
         self.generate_html_summary()
 
+    
     def write_parameters(self, excluded=['out_folder', 'input_folder', 'model', 'mol', 'plot_contacts', 'plot_dihedral',
         'fes', 'plot_mol_contacts', 'rg_analysis', 'start_index', 'bulk_split', 'save_model']):
         """Write the parameters set for the analysis to a json file
@@ -136,6 +142,7 @@ class ModelAnalysis(object):
         with open(f'{self.out_folder}file.txt', 'w') as file:
           file.write(json.dumps(json_info))
 
+    
     def handle_model(self):
         """Creates a model is model is not set. Loads a model from a string. Or assign a model to self.model.out_folder
 
@@ -167,6 +174,7 @@ class ModelAnalysis(object):
 
         self.mol = Molecule(self.model.data.simlist[0].molfile)
 
+    
     def additional_plots(self):
         """Createa additinal plot following the parameters set for the instance of the class
         """
@@ -181,6 +189,7 @@ class ModelAnalysis(object):
             for name, sel, threshold in self.plot_contacts:
                 self.plot_contact_map(name, sel, threshold)
 
+    
     def plot_contact_map(self, name, selection="noh and protein", threshold=4):
         """Generate a residue-residue contact plot by macrostate given a VMD selection
         
@@ -202,6 +211,7 @@ class ModelAnalysis(object):
           mapping=mapping, cols=2, rows=int(self.model.macronum/2)+self.model.macronum%2,
           plot=False, save=self.out_folder + "/{}.png".format(name))
 
+    
     def plot_dih(self):
         """Creates a plot of the standard deviation of the dihedral angles of the protein by macrostate
         """
@@ -212,6 +222,7 @@ class ModelAnalysis(object):
             save=self.out_folder + "/{}.png".format(self.plot_dihedral), chain_id="P1",
             start_index=self.start_index)
 
+    
     def plot_atom_mol_contact(self, sel1="noh and protein", sel2="noh and resname MOL", threshold=5):
         """Plot a molecule-residue contact map.
         
@@ -234,6 +245,7 @@ class ModelAnalysis(object):
         aux_plot(self.model, mol_contact_map_metric, self.mol, contact_plot_by_atom, skip=self.skip, method=np.mean,
             mapping=mapping, label=label, save=f'{self.out_folder}/{self.plot_mol_contacts}_by_atom.png')
 
+    
     def plot_mol_contact(self, sel1="noh and protein", sel2="noh and resname MOL", threshold=4):
         """Plot a molecule-residue contact map.
         
@@ -257,6 +269,7 @@ class ModelAnalysis(object):
             mod=self.model, title="Contacts by residue",
             plot=False, save=f'{self.out_folder}/{self.plot_mol_contacts}.png')
 
+    
     def generate_html_summary(self):
         """Generates a html report with all the data generated
         """

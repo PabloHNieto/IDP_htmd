@@ -1,14 +1,16 @@
 # from htmd.ui import *
 import numpy as np
 
-def get_params_model(model):
-    return {'clusters' : len(model.micro_ofcluster),
-    'lag' : int(round(model.lag*model.data.fstep, 0)), 
-    'macroN' : model.macronum
-  }
 
-def save_structures(model, outdir, settingstates, numsamples, statetype, 
-    modifications=None, **kwargs):
+def get_params_model(model):
+
+    return {'clusters': len(model.micro_ofcluster),
+            'lag': int(round(model.lag * model.data.fstep, 0)),
+            'macroN': model.macronum}
+
+
+def save_structures(model, outdir, states, numsamples, statetype,
+                    modifications=None, **kwargs):
     import os
     from glob import glob
     if len(states) != len(numsamples) and len(numsamples) != len(statetype):
@@ -16,23 +18,25 @@ def save_structures(model, outdir, settingstates, numsamples, statetype,
         return
     os.makedirs(outdir, exist_ok=True)
     for idx, i in enumerate(states):
-        m = model.getStates(statetype=statetype[idx], states=[i], numsamples=int(numsamples[idx]), **kwargs)
+        m = model.getStates(statetype=statetype[idx], states=[i],
+                            numsamples=int(numsamples[idx]), **kwargs)
         for struct in m:
             if modifications:
                 for prop, setting, sel in modifications:
                     struct.set(prop, setting, sel)
             for frame in range(struct.numFrames):
-                out_name = "{}/{}_{}_{}.pdb".format(outdir, statetype[idx], i , frame)
+                out_name = f"{outdir}/{statetype[idx]}_{i}_{frame}.pdb"
                 struct.frame = frame
-                struct.resname[struct.resname=='HSD'] = "HIS"
+                struct.resname[struct.resname == 'HSD'] = "HIS"
                 # struct.write(out_name, sel="not name CAY CY OY NT CAT")
                 struct.write(out_name, sel="protein")
     return glob(outdir+"/*pdb")
 
+
 def get_weighted(model, total_struct):
     import numpy as np
     population = model.eqDistribution(plot=False)
-    out_structs = np.array([int(total_struct*pop) for pop in population ])
+    out_structs = np.array([int(total_struct * pop) for pop in population])
 
     idx_max = np.where(population == np.max(population))
     if np.sum(out_structs) < total_struct:
@@ -41,12 +45,14 @@ def get_weighted(model, total_struct):
         out_structs[idx_max] -= total_struct - np.sum(out_structs)
     return out_structs
 
+
 def metastable_states(model):
     import numpy as np
     metastable_sets = []
     for i in range(model.macronum):
         metastable_sets.append(np.where(model.macro_ofmicro == i)[0])
     model.metastable_sets = np.array(metastable_sets)
+
 
 def get_data(model, metr, skip=1):
     """ Returns the projected data of metric applied to a model
@@ -66,6 +72,7 @@ def get_data(model, metr, skip=1):
     data = metric.project()
     return data
 
+
 def create_bulk(model, metric):
     """Creates a bulk macrosates
     Modifies passed model
@@ -78,6 +85,7 @@ def create_bulk(model, metric):
         Metric to describe a bulk vs not-bulk situation. In general is the contacts 
         between protein and ligand selection with groupsels set to 'all'
     """
+    from htmd.model import getStateStatistic
     data = get_data(model, metric)
     data_by_micro = np.array(getStateStatistic(model, data, states=range(model.micronum), statetype="micro"))
     min_contacts = np.where(data_by_micro == np.min(data_by_micro))[0]
@@ -99,11 +107,13 @@ def cluster_macro(model, data, macro, method=np.mean):
         plot_contacts(cluster, mol, labels=labels)
         # model.createState(label_micro)
 
+
 def compute_all_mfpt(model):
     all_mfpt = []
     for source in range(model.macronum):
         all_mfpt.append([model.msm.mfpt(source, sink) for sink in range(model.macronum)])
     return np.array(all_mfpt)
+
 
 def scan_clusters(model, nclusters, out_dir):
     """Create models 
@@ -119,7 +129,7 @@ def scan_clusters(model, nclusters, out_dir):
         Directory to save the generated plots
     """
     from htmd.model import Model
-    from htmd.clustering import MiniBatchKMeans
+    from sklearn.cluster import MiniBatchKMeans
     for i in nclusters:
         model.data.cluster(MiniBatchKMeans(n_clusters=i), mergesmall=5)
         new_mod = Model(model.data)
