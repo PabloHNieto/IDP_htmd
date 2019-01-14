@@ -1,20 +1,36 @@
 from htmd.model import Model 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import cm as colormaps
 from matplotlib.lines import Line2D  
-# from htmd.ui import *
 from tqdm import tqdm
 import networkx as nx
 from htmd.util import ensurelist
 
-def plot_RG(data, mol, chain_id="P1", limits=None, labels=None, plot=True, save=None):
+def plot_RG(data, mol, chain_id="P1", labels=None, plot=True, save=None):
+    """Plots the radious of gyration of a model by macrosate
+    
+    Parameters
+    ----------
+    data : np.ndarray
+        Radious of gyration data for the model
+    mol : <htmd.molecule.molecule.Molecule>
+        Molecule object of the model
+    chain_id : str, optional
+        Chain id of the mol obejct, used to define the labels (the default is "P1")
+    labels : [string], optional
+        Array with the labels of the x axis 
+        (the default is None, which results in the computatiosn of the default labels)
+    plot : bool, optional
+        Wether to plot the picture (the default is True, which plots the pictures)
+    save : string, optional
+        File path where to save the picture (the default is None, which does not save the picture)
+    
+    """
     from IDP_htmd.MetricRadiusGyration import MetricRG
 
     seq = mol.sequence()[chain_id]
-    if not limits:
-        lower_bound, upper_bound = MetricRG.predict(len(seq))
-        limits = [ [lower_bound, upper_bound] for i in range(len(data[0])) ]
+    lower_bound, upper_bound = MetricRG.predict(len(seq))
+    limits = [ [lower_bound, upper_bound] for i in range(len(data[0])) ]
 
     if not labels:
         labels = [ 'Macro-{}'.format(i) for i,_ in enumerate(data[0])]
@@ -34,16 +50,47 @@ def plot_RG(data, mol, chain_id="P1", limits=None, labels=None, plot=True, save=
     if save:
         plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
 
-def plot_contacts(data, mol, labels=None, idx=None, mod=None, 
+def plot_contacts(data, mol, labels=None, idx=None, model=None, 
     title="Default Title", plot=True, save=None, vmin=0, vmax=1, 
     xlabel=None, cmap="viridis"):
+    """[summary]
+    
+    Parameters
+    ----------
+    data : np.ndarray
+        Radious of gyration data for the model
+    mol : <htmd.molecule.molecule.Molecule>
+        Molecule object of the model
+    labels : [string], optional
+        [description] (the default is None, which will create default labels for the y axis)
+    idx : int, optional
+        Starting index to be  (the default is None, which will infeer it from the molecule)
+    model : <htmd.model.Model>, optional
+        Model object, used to infeer the y labels 
+        (the default is None, which will set up an enumeration of the y labels)
+    title : string, optional
+        Title of the picture (the default is None, which does not includes any title)
+    plot : bool, optional
+        Wether to plot the picture (the default is True, which plots the pictures)
+    save : string, optional
+        File path where to save the picture (the default is None, which does not save the picture)
+    vmin : int, optional
+        Minimun value to be shown in the contact map 
+        (the default is 0, which [default_description])
+    vmax : int, optional
+        Maximun value to be shown in the contact map 
+        (the default is 1, which [default_description])
+    xlabel : [string], optional
+        Arrays of labels to be used in the x axes 
+        (the default is None, which will create deafult one with residue name and residue number)
+    cmap : str, optional
+        Matplotlib colormap name (the default is "viridis")
+    """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     
     if not idx:
         idx = mol.resid[0]
     xlabels = [b + str(i+idx) for i,b in enumerate(mol.sequence()['P1'])]
-    x = [i-0 for i in range(len(xlabels))]
-
 
     plt.figure(figsize=(8, len(data)), dpi=300)
     ax = plt.gca()
@@ -53,14 +100,14 @@ def plot_contacts(data, mol, labels=None, idx=None, mod=None,
 
     ax.set_xticklabels(xlabels, rotation='vertical', ha="center")
     ax.tick_params(length=0)
-    ax.set_xticks(x)
+    ax.set_xticks(range(len(xlabels))
 
     if not labels:
         labels = ['Macro-{}'.format(i) for i in range(len(data))]
 
-    if mod:
-        ylabels = ['Macro {}: {:5.2f}%'.format(idx, i*100) for idx, i in enumerate(mod.eqDistribution(plot=False),0 )]
-        y = [i for i in range(mod.macronum)]
+    if model:
+        ylabels = ['Macro {}: {:5.2f}%'.format(idx, i*100) for idx, i in enumerate(model.eqDistribution(plot=False),0 )]
+        y = [i for i in range(model.macronum)]
         ax.set_yticks(y)
         ax.set_yticklabels(ylabels)
     else:
@@ -100,6 +147,28 @@ def _atom_contact_plot(ver, ax, mol, mapping, label, cmap="viridis"):
     return im
 
 def contact_plot_by_atom(all_data, mol, mapping=None, label=None, chain_id="P1", title=None, plot=True, save=None, **kwds):
+    """Plots a contact map for each macrostate 
+    
+    Parameters
+    ----------
+    all_data : np.ndarray
+        Array with the data to be plotted with dimenasions number of micros/macros x shape of mapping
+    mol : <htmd.molecule.molecule.Molecule>
+        Molecule used to extract the sequences.
+    mapping : [type], optional
+        Mapping object of the data used to create the data
+    label : [string], optional
+        Array with the labels of the x axis 
+        (the default is None, which results in the computatiosn of the default labels)
+    chain_id : str, optional
+        Chain id of the mol obejct, used to define the labels (the default is "P1")
+    title : string, optional
+        Title of the picture (the default is None, which does not includes any title)
+    plot : bool, optional
+        Wether to plot the picture (the default is True, which plots the pictures)
+    save : string, optional
+        File path where to save the picture (the default is None, which does not save the picture)
+    """
     sequence_length = len(mol.sequence()[chain_id])
     dimension = int(len(all_data[0])/sequence_length)
     f, axes = plt.subplots(ncols=1, 
@@ -129,6 +198,7 @@ def contact_plot_by_atom(all_data, mol, mapping=None, label=None, chain_id="P1",
 
     if save:
         plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
+
 
 def plot_dihedral(data, mol, start_index=1, chain_id="X", plot=True, save=None, title=None, ylabel=None, **kwds):
     """ Plots the standard deviation of dihedral angles by macrostates
@@ -223,6 +293,7 @@ def _contactVecToMatrix(vector, atomIndexes):
 
 def _contact_plot(ver, axes,  mol, mapping, dpi=200, title=None, xlabels=None, ylabels=None, legend=False):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
+    from matplotlib import cm 
     global mpbl
     vector = np.ones(ver.shape, dtype=bool)
     colors= ver
@@ -231,7 +302,7 @@ def _contact_plot(ver, axes,  mol, mapping, dpi=200, title=None, xlabels=None, y
     # Creating the 2D contact maps
     cm, newmapping, uqAtomGroups = _contactVecToMatrix(vector, mapping.atomIndexes)
     num = len(uqAtomGroups)
-    cmtrue, _, uq = _contactVecToMatrix(truecontacts, mapping.atomIndexes)
+    _ , _, uq = _contactVecToMatrix(truecontacts, mapping.atomIndexes)
 
     if not xlabels:
         xlabels = [ mol.resname[atom[0]] + str(mol.resid[atom[0]]) for atom in uq ]
@@ -242,7 +313,7 @@ def _contact_plot(ver, axes,  mol, mapping, dpi=200, title=None, xlabels=None, y
     rows, cols = np.where(cm)
 
     if isinstance(colors, np.ndarray) and isinstance(colors[0], float):
-        mpbl = colormaps.ScalarMappable(cmap=colormaps.jet)
+        mpbl = cm.ScalarMappable(cmap=cm.jet)
         mpbl.set_array(colors)
         colors = mpbl.to_rgba(colors)
     if len(colors) == len(vector):
@@ -264,10 +335,10 @@ def _contact_plot(ver, axes,  mol, mapping, dpi=200, title=None, xlabels=None, y
     axes.set_xlim([0, num ])
     axes.set_ylim([0, num ])
 
-    if legend:
-        divider = make_axes_locatable(axes)
-        cax = divider.append_axes("right", size="5%", pad=0.05)
-        plt.colorbar(im, cax=cax)
+    # if legend:
+    #     divider = make_axes_locatable(axes)
+    #     cax = divider.append_axes("right", size="5%", pad=0.05)
+    #     plt.colorbar(im, cax=cax)
 
 def contact_plot(data, mol, cols, rows, model=None, plot=True, save=None, **kwargs):
     """Plots a contact matrix for each data in the array.
@@ -317,26 +388,27 @@ def generate_labels(mol, *args):
     return all_res
 
 def generate_labels2(mol, mapping, *args):
-    # three_letter ={'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
-    #             'D':'ASP', 'N':'ASN', 'H':'HSD', 'W':'TRP', 'F':'PHE', 'Y':'TYR', \
-    #             'R':'ARG', 'K':'LYS', 'S':'SER', 'T':'THR', 'M':'MET', 'A':'ALA', \
-    #             'G':'GLY', 'P':'PRO', 'C':'CYS', 'MOL':'MOL'}
-
-    # all_res = [three_letter[i]+str(b) for i, b in zip(list(mol.sequence()['P1']), list(set(mol.resid[mol.atomselect('protein')])))]
     labels = []
     for atoms, _ in mapping.atomIndexes:
         label = mol.resname[atoms[0]] + str(mol.resid[atoms[0]])
         if not label in labels:
             labels.append(label)  
     return labels
-    # _ = [ all_res.append(i.upper()) for i in args ]
-    # return all_res
 
-def plot_mfpt(data, mol, save=None):
+def plot_mfpt(data,save=None):
+    """Plots the logarithm of the mfpt
+    
+    Parameters
+    ----------
+    data : np.array
+        Matrix with the mpft between states
+    save : string, optional
+        Path of the file in which to save the figure (the default is None, which does not save the plot)
+    """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     # plt.figure( dpi=300)
     plt.title("MFPT between macros")
-    ax2 = plt.gca()
+    ax = plt.gca()
     im = plt.imshow(np.log10(data), cmap='tab20c')
     # ax2.colorbar()
     #
@@ -345,10 +417,10 @@ def plot_mfpt(data, mol, save=None):
     #
     # _ = ax2.set_yticks(range(len(sorted_model_labels)))
     # _ = ax2.set_yticklabels(sorted_model_labels2)
-    ax2.set_ylabel("From ...")
-    ax2.set_xlabel("To ...")
-    #
-    divider = make_axes_locatable(ax2)
+    ax.set_ylabel("From ...")
+    ax.set_xlabel("To ...")
+
+    divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="3%", pad=0.1)
 
     cbar = plt.colorbar(im, cax=cax)
@@ -356,6 +428,34 @@ def plot_mfpt(data, mol, save=None):
     cbar.set_label("$\it{log_{10} (mfpt)}$")
     if save:
         plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
+
+def in_out_rates():
+    pass
+    # TODO
+    # f = plt.figure(figsize=(14, 7))
+    # ax1 = plt.subplot2grid((1, 12), (0, 0),  colspan=4)
+    # ax2 = plt.subplot2grid((1, 12), (0, 5),  colspan=8)
+    # ax1.barh(list(range(len(start_fluxes0))), start_fluxes0[::-1], color=(0, 0, 1, 0.4), edgecolor=(0,0,0.5,0.5), label="In")
+    # ax1.barh(list(range(len(start_fluxes0))), end_fluxes0[::-1], color=(0.8, 0, 0, 0.2), edgecolor=(0.5,0,0,0.5), label="Out")
+
+    # # sorted_labels = [x.split('->')[1] for x in sorted(start_paths, key=lambda pair: len(pair))]
+    # # _,_ = plt.xticks(list(range(len(sorted_model_labels))), sorted_model_labels, rotation='vertical', ha="left")
+    # # plt.show()
+    # ax1.set_ylim((-0.5, 15.5))
+    # ax1.set_xlim((-40, 40))
+    # ax1.vlines(0, -1, 16, color=(0,0,0, 0.7))
+    # ax1.grid(axis='x')
+    # ax1.barh(list(range(len(start_fluxes2))), -1*start_fluxes2[::-1], color=(0, 0, 1, 0.4), edgecolor=(0,0,0.5,0.5))
+    # ax1.barh(list(range(len(start_fluxes2))), -1*end_fluxes2[::-1], color=(0.8, 0, 0, 0.2), edgecolor=(0.5,0,0,0.5))
+    # ax1.set_title("In & Out intermediate Macros")
+    # # ax1.set_ylabel("Macrostates Label")
+    # ax1.set_xlabel("Bound2 (%)                   Bound0 (%)")
+
+    # # sorted_labels = [x.split('->')[1] for x in sorted(start_paths, key=lambda pair: len(pair))]
+    # _ = ax1.set_yticks(list(range(len(in_out_model_labels))))
+    # _ = ax1.set_yticklabels(in_out_model_labels[::-1], rotation='horizontal', ha="right",)
+    # legend = ax1.legend(loc='upper rigth', shadow=True)
+
 
 if __name__ == "__main__":
     from htmd.model import getStateStatistic

@@ -1,3 +1,4 @@
+#!/shared/pablo/miniconda3/bin/python
 from htmd.molecule.molecule import Molecule
 import numpy as np 
 
@@ -92,5 +93,5 @@ if __name__ == "__main__":
     mol = Molecule("//shared/pablo/IDP_htmd/IDP_htmd/ref_files/cube_files/macro_0_1.pdb")
     mol.view(sel="noh and protein", color="Name", style="Licorice")
     pocket = read_pocket("/shared/pablo/IDP_htmd/IDP_htmd/ref_files/cube_files/output.cube")
-    # pocket.write("/home/pablo/test.pdb")
-    pocket.view(style="CPK", color="Occupancy")
+    pocket.write("/home/pablo/test.pdb")
+    # pocket.view(style="CPK", color="Occupancy")
