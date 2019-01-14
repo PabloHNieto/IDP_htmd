@@ -306,14 +306,6 @@ if __name__ == "__main__":
     import pandas as pd
 
     test_files = glob("/shared/pablo/test_pdbs/*pdb")
-    sparta = CScalculations(test_files, "sparta")
-    # sparta.lauch_works()
-
-    shiftx = CScalculations(test_files, "shiftx")
-    # shiftx.lauch_works()
-
-    # CScalculations.sparta_launcher(test_files, "/shared/pablo/cs_output",)
-    # CScalculations.shiftx_launcher(test_files, "/shared/pablo/cs_sh_output", 310)
 
     sparta_files = glob("/shared/pablo/cs_output/*pred.tab")
     shiftx_files = glob("/shared/pablo/cs_sh_output/*cs")
