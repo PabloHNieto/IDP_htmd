@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=500, ticadim=5,
     tica_lag=20, model_lag=10, model_units='ns', macro_N=10, bulk_split=False, fes=True, rg_analysis=True, save=False): 
     """Analysis script for create a Markov State Model
@@ -113,6 +112,7 @@ def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=50
 
     return model
 
+
 def rg_analysis(model, **kwargs):
     from htmd.model import getStateStatistic
     from IDP_htmd.MetricRadiusGyration import MetricRG
@@ -159,7 +159,7 @@ def bootstrap_model (data, rounds, folder, model_function=None, fraction=0.8,
         dataBoot.cluster(MiniBatchKMeans(n_clusters=clusters), mergesmall=5)
         x = False
       except Exception as e:
-        print("Trying again")
+        print(f"Trying again: {e}")
 
     # Model generation
     model = Model(dataBoot)
