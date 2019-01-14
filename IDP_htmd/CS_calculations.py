@@ -88,19 +88,19 @@ class CScalculations():
         import numpy as np
         import pandas as pd
         dt = {'sparta': [np.dtype([('resid', '<i8'), 
-                    ('resname', 'U1'),
-                    ('atomType', 'U3'), 
-                    ('ss_shift','<f8'),
-                    ('shift', '<f8'),
-                    ('rc_shift', '<f8'), 
-                    ('hm_shift','<f8'), 
-                    ('ef_shift', '<f8'),
-                    ('sigma', '<f8')]), 27, None],
+                                    ('resname', 'U1'),
+                                    ('atomType', 'U3'), 
+                                    ('ss_shift','<f8'),
+                                    ('shift', '<f8'),
+                                    ('rc_shift', '<f8'), 
+                                    ('hm_shift','<f8'), 
+                                    ('ef_shift', '<f8'),
+                                    ('sigma', '<f8')]), 27, None],
                 'shiftx2': [np.dtype([('chain', 'U1'),
-                    ('resid', '<i8'), 
-                    ('resname', 'U1'),
-                    ('atomType', 'U4'), 
-                    ('shift', '<f8')]), 1, ","]
+                                        ('resid', '<i8'), 
+                                        ('resname', 'U1'),
+                                        ('atomType', 'U4'), 
+                                        ('shift', '<f8')]), 1, ","]
         }
 
         if nmr_type not in ['sparta', 'shiftx2']:
@@ -294,7 +294,7 @@ class CScalculations():
         return output
 
 def _launch_worker(info):
-    #To allow for paralelization 
+    #To allow paralelization
     import os
     command = "{} -o {}.cs >> /tmp/log.txt".format(info[0], info[1])
     os.system(command)
