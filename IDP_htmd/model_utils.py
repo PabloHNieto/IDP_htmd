@@ -91,6 +91,7 @@ def create_bulk(model, metric):
     print(f"Macrostate created with micros: {min_contacts}")
     return min_contacts
 
+
 def cluster_macro(model, data, macro, method=np.mean):
     """Modifies the model by splitting a macrostate.
     In first place, the mean for the given data is calculated for each micro
@@ -129,7 +130,7 @@ def cluster_macro(model, data, macro, method=np.mean):
 
 def compute_all_mfpt(model):
     """Calculates the mean first passages time in (ns) between
-    all macrostates within an MSM.
+    every macrostates within an MSM.
     
     Parameters
     ----------
@@ -147,29 +148,62 @@ def compute_all_mfpt(model):
     return np.array(all_mfpt)
 
 
-def compute_in_out_rates(model, out_macros, bulk_macro):
+def calculate_in_out_rates(model, out_macros, bulk_macro, save_dir=None):
     """[summary]
     
     Parameters
     ----------
-    model : [type]
+    model : <htmd.model.Model>
         [description]
-    macro : [type]
+    out_macros : [int]
         [description]
+    bulk_macro : int
+        [description]
+    save_dir : string, optional
+        [description] (the default is None, which does not save the path and pathfluxes)
     
+    Returns
+    -------
+    [type]
+        [description]
     """
     from pyemma import msm
-    # from Flux import FluxController
 
-    # if not model.metastable_sets:
-    #     metastable_states(model)
+    metastable_states(model)
     
+    out = []
     for i in out_macros:
-        print(i)
         tpt = msm.tpt(model.msm, model.metastable_sets[bulk_macro], model.metastable_sets[i])
         paths, pathfluxes = tpt.pathways(fraction=0.9)
-        return [paths, pathfluxes]
+        all_info = np.array([paths, pathfluxes])
+        out.append(all_info)
+        if save_dir:
+            np.save(f"{save_dir}/path_{i}_fluxes.npy", all_info)
+    return out
 
+
+def load_paths(model, out_macro, bulk_macro, filename):
+    if filename:
+        path, pathfluxes = np.load(filename)
+    else: 
+        print("Calculating pathways")
+        path, pathfluxes = calculate_in_out_rates(model, out_macro, bulk_macro)
+    
+    return path, pathfluxes
+    
+
+def translate_paths(paths, pathfluxes, model):
+    # Translate paths from micro to macros jumps
+    nodes = {}
+    for idx, (path, flux) in enumerate(zip(paths, pathfluxes)):
+        tmp = [model.macro_ofmicro[micro] for micro in path ]
+        tmp = "->".join([str(tmp[idx]) for idx, _ in enumerate(tmp[0:-1]) if tmp[idx] != tmp[idx + 1]])
+        if tmp in nodes.keys():
+            nodes[tmp] += flux
+        else:
+            nodes[tmp] = flux
+        #Removing consecutive identical values    
+    return nodes
 
 def scan_clusters(model, nclusters, out_dir):
     """Create models 
@@ -237,4 +271,4 @@ if __name__ == "__main__":
     model = Model()
     base_dir = "/workspace8/p27_sj403/27-10-2018_p27_sj403/"
     model.load(f"{base_dir}final_model_split.dat")
-    p, pf = compute_in_out_rates(model, [1,2], 3)
+    p, pf = calculate_in_out_rates(model, [1,2], 3)

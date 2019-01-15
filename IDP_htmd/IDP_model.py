@@ -50,8 +50,8 @@ def plot_RG(data, mol, chain_id="P1", labels=None, plot=True, save=None):
     if save:
         plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
 
-def plot_contacts(data, mol, labels=None, idx=None, model=None, 
-    title="Default Title", plot=True, save=None, vmin=0, vmax=1, 
+def plot_contacts(data, mol, idx=None, model=None, labels=None, 
+    title=None, plot=True, save=None, vmin=0, vmax=1, 
     xlabel=None, cmap="viridis"):
     """[summary]
     
@@ -96,11 +96,12 @@ def plot_contacts(data, mol, labels=None, idx=None, model=None,
     ax = plt.gca()
     im = ax.imshow(np.flip(data, 0)[::-1], vmin=vmin, vmax=vmax, cmap=cmap)
 
-    plt.title(title)
+    if title:
+        plt.title(title)
 
     ax.set_xticklabels(xlabels, rotation='vertical', ha="center")
     ax.tick_params(length=0)
-    ax.set_xticks(range(len(xlabels))
+    ax.set_xticks(range(len(xlabels)))
 
     if not labels:
         labels = ['Macro-{}'.format(i) for i in range(len(data))]
@@ -115,7 +116,7 @@ def plot_contacts(data, mol, labels=None, idx=None, model=None,
         ax.set_yticks(y)
         ax.set_yticklabels(labels)
     ax.set_xlabel(xlabel)
-
+    
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
 
@@ -128,7 +129,7 @@ def plot_contacts(data, mol, labels=None, idx=None, model=None,
         plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
 
 
-def _atom_contact_plot(ver, ax, mol, mapping, label, cmap="viridis"):
+def _atom_contact_plot(ver, ax, mol, label, cmap="viridis"):
 
     three_letter ={'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
         'D':'ASP', 'N':'ASN', 'H':'HSD', 'W':'TRP', 'F':'PHE', 'Y':'TYR', \
@@ -184,11 +185,11 @@ def contact_plot_by_atom(all_data, mol, mapping=None, label=None, chain_id="P1",
 
     if len(all_data) == 1:
             data = np.transpose(all_data[0].reshape(sequence_length, dimension))
-            z = _atom_contact_plot(data, axes, mol, mapping, **kwds)
+            z = _atom_contact_plot(data, axes, mol, **kwds)
     else:
         for b,(r, data) in enumerate(zip(axes.flat, all_data)):
             data = np.transpose(data.reshape(sequence_length, dimension))
-            z = _atom_contact_plot(data, r, mol, mapping, label[b], **kwds)
+            z = _atom_contact_plot(data, r, mol, label[b], **kwds)
 
     cbar_ax = f.add_axes([0.92, 0.15, 0.025, 0.7])
     f.colorbar(z, cax=cbar_ax)
@@ -395,7 +396,7 @@ def generate_labels2(mol, mapping, *args):
             labels.append(label)  
     return labels
 
-def plot_mfpt(data,save=None):
+def plot_mfpt(data, save=None):
     """Plots the logarithm of the mfpt
     
     Parameters
@@ -406,7 +407,7 @@ def plot_mfpt(data,save=None):
         Path of the file in which to save the figure (the default is None, which does not save the plot)
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
-    # plt.figure( dpi=300)
+    plt.figure(dpi=300)
     plt.title("MFPT between macros")
     ax = plt.gca()
     im = plt.imshow(np.log10(data), cmap='tab20c')
