@@ -3,18 +3,18 @@ import numpy as np
 
 class FluxController():
     def __init__(self, paths=None, pathfluxes=None, model=None, 
-                out_macros=None, bulk=None, nodes=None, save_dir=None):
+                out_macro=None, bulk=None, nodes=None, save_dir=None):
         self.paths = paths
         self.pathfluxes = pathfluxes
         self.model = model
-        self.out_macros = out_macros
-        self.bulk = bulk
+        self.sink = out_macro
+        self.source = bulk
         self.nodes = nodes
         self.save_dir = save_dir
         
-        if self.model and self.out_macros and self.bulk and not self.paths and not self.pathfluxes:
+        if self.model and self.source and self.sink and not self.paths and not self.pathfluxes:
             print("Calculating rates")
-            self.calculate_in_out_rates(self.model, self.out_macros, self.save_dir)
+            self.paths, self.pathfluxes = self.calculate_in_out_rates(self.model, self.source, self.save_dir)
         
         if not self.nodes and self.model and self.paths and self.pathfluxes:
             self.nodes = self.translate_paths(self.paths, self.pathfluxes, self.model)
@@ -35,39 +35,42 @@ class FluxController():
         return np.array(all_fluxes)
     
 
-    def calculate_in_out_rates(self, model, out_macros, bulk_macro, save_dir=None):
+    def calculate_in_out_rates(self, model, sink, source, save_dir=None):
         """[summary]
         
         Parameters
         ----------
         model : <htmd.model.Model>
-            [description]
-        out_macros : [int]
-            [description]
-        bulk_macro : int
-            [description]
+            Model to be used to calculate the fluxes and the paths
+        sink : int
+            Integer of the sink state
+        source : int
+            Macrostates used as source
         save_dir : string, optional
-            [description] (the default is None, which does not save the path and pathfluxes)
+            Path where to save the data (the default is None, which does not save the path and pathfluxes)
         
         Returns
         -------
-        [type]
-            [description]
+        [np.ndarray]
+            Array of same length as sinks argument. For each sink it return the path and their fluxes
         """
         from pyemma import msm
         from IDP_htmd.model_utils import metastable_states
 
         metastable_states(model)
         
-        out = []
-        for i in out_macros:
-            tpt = msm.tpt(model.msm, model.metastable_sets[bulk_macro], model.metastable_sets[i])
-            self.paths, self.pathfluxes = tpt.pathways(fraction=0.9)
-            all_info = np.array([self.paths, self.pathfluxes])
-            out.append(all_info)
-            if save_dir:
-                np.save(f"{save_dir}/path_{i}_fluxes.npy", all_info)
-        return out
+        # out = []
+        # for i in out_macros:
+
+        if sink < 0  or sink > model.macronum or source < 0 or source > model.macronum:
+            raise Exception("Sink or source out of bounds")
+
+        tpt = msm.tpt(model.msm, model.metastable_sets[source], model.metastable_sets[sink])
+        paths, pathfluxes = tpt.pathways(fraction=0.9)
+
+        if save_dir:
+            np.save(f"{save_dir}/path_{sink}_fluxes.npy", np.array([paths, pathfluxes]))
+        return paths, pathfluxes
 
 
     def load_paths(self, model, out_macro, bulk_macro, filename):
@@ -75,6 +78,9 @@ class FluxController():
             path, pathfluxes = np.load(filename)
         else: 
             print("Calculating pathways")
+            self.source = out_macro
+            self.sink = bulk_macro
+            self.model = model
             self.path, self.pathfluxes = self.calculate_in_out_rates(model, out_macro, bulk_macro)
         
         return path, pathfluxes
