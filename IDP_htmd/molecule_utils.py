@@ -24,6 +24,14 @@ def _read_header_pocket(filename):
                     break
     return starting_coor, vector_coor, cube_dim
 
+def cis_angle(mol):
+    import numpy as np
+    from htmd.ui import Dihedral, MetricDihedral
+    dih = np.array(Dihedral.proteinDihedrals(mol, dih=('omega')))
+    met = MetricDihedral(dih, sincos=False)
+    return np.array(met.project(mol))
+
+
 def _read_body_pocket(filename):
     BORH_ANGSTROM_RATIO = 0.529177
     AR_THRESHOLD = 0.1

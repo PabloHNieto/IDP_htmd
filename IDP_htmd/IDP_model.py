@@ -430,34 +430,6 @@ def plot_mfpt(data, save=None):
     if save:
         plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
 
-def in_out_rates():
-    pass
-    # TODO
-    # f = plt.figure(figsize=(14, 7))
-    # ax1 = plt.subplot2grid((1, 12), (0, 0),  colspan=4)
-    # ax2 = plt.subplot2grid((1, 12), (0, 5),  colspan=8)
-    # ax1.barh(list(range(len(start_fluxes0))), start_fluxes0[::-1], color=(0, 0, 1, 0.4), edgecolor=(0,0,0.5,0.5), label="In")
-    # ax1.barh(list(range(len(start_fluxes0))), end_fluxes0[::-1], color=(0.8, 0, 0, 0.2), edgecolor=(0.5,0,0,0.5), label="Out")
-
-    # # sorted_labels = [x.split('->')[1] for x in sorted(start_paths, key=lambda pair: len(pair))]
-    # # _,_ = plt.xticks(list(range(len(sorted_model_labels))), sorted_model_labels, rotation='vertical', ha="left")
-    # # plt.show()
-    # ax1.set_ylim((-0.5, 15.5))
-    # ax1.set_xlim((-40, 40))
-    # ax1.vlines(0, -1, 16, color=(0,0,0, 0.7))
-    # ax1.grid(axis='x')
-    # ax1.barh(list(range(len(start_fluxes2))), -1*start_fluxes2[::-1], color=(0, 0, 1, 0.4), edgecolor=(0,0,0.5,0.5))
-    # ax1.barh(list(range(len(start_fluxes2))), -1*end_fluxes2[::-1], color=(0.8, 0, 0, 0.2), edgecolor=(0.5,0,0,0.5))
-    # ax1.set_title("In & Out intermediate Macros")
-    # # ax1.set_ylabel("Macrostates Label")
-    # ax1.set_xlabel("Bound2 (%)                   Bound0 (%)")
-
-    # # sorted_labels = [x.split('->')[1] for x in sorted(start_paths, key=lambda pair: len(pair))]
-    # _ = ax1.set_yticks(list(range(len(in_out_model_labels))))
-    # _ = ax1.set_yticklabels(in_out_model_labels[::-1], rotation='horizontal', ha="right",)
-    # legend = ax1.legend(loc='upper rigth', shadow=True)
-
-
 if __name__ == "__main__":
     from htmd.model import getStateStatistic
     from htmd.projections.metric import MetricData
