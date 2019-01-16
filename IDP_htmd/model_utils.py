@@ -127,7 +127,6 @@ def cluster_macro(model, data, macro, method=np.mean):
             plot=False, save=f"/home/pablo/test_info/{i}_plt_contacts.png")
         model.createState(label_micro)
 
-
 def compute_all_mfpt(model):
     """Calculates the mean first passages time in (ns) between
     every macrostates within an MSM.
@@ -146,64 +145,6 @@ def compute_all_mfpt(model):
     for source in range(model.macronum):
         all_mfpt.append([model.msm.mfpt(source, sink) for sink in range(model.macronum)])
     return np.array(all_mfpt)
-
-
-def calculate_in_out_rates(model, out_macros, bulk_macro, save_dir=None):
-    """[summary]
-    
-    Parameters
-    ----------
-    model : <htmd.model.Model>
-        [description]
-    out_macros : [int]
-        [description]
-    bulk_macro : int
-        [description]
-    save_dir : string, optional
-        [description] (the default is None, which does not save the path and pathfluxes)
-    
-    Returns
-    -------
-    [type]
-        [description]
-    """
-    from pyemma import msm
-
-    metastable_states(model)
-    
-    out = []
-    for i in out_macros:
-        tpt = msm.tpt(model.msm, model.metastable_sets[bulk_macro], model.metastable_sets[i])
-        paths, pathfluxes = tpt.pathways(fraction=0.9)
-        all_info = np.array([paths, pathfluxes])
-        out.append(all_info)
-        if save_dir:
-            np.save(f"{save_dir}/path_{i}_fluxes.npy", all_info)
-    return out
-
-
-def load_paths(model, out_macro, bulk_macro, filename):
-    if filename:
-        path, pathfluxes = np.load(filename)
-    else: 
-        print("Calculating pathways")
-        path, pathfluxes = calculate_in_out_rates(model, out_macro, bulk_macro)
-    
-    return path, pathfluxes
-    
-
-def translate_paths(paths, pathfluxes, model):
-    # Translate paths from micro to macros jumps
-    nodes = {}
-    for idx, (path, flux) in enumerate(zip(paths, pathfluxes)):
-        tmp = [model.macro_ofmicro[micro] for micro in path ]
-        tmp = "->".join([str(tmp[idx]) for idx, _ in enumerate(tmp[0:-1]) if tmp[idx] != tmp[idx + 1]])
-        if tmp in nodes.keys():
-            nodes[tmp] += flux
-        else:
-            nodes[tmp] = flux
-        #Removing consecutive identical values    
-    return nodes
 
 def scan_clusters(model, nclusters, out_dir):
     """Create models 
