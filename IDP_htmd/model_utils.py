@@ -1,6 +1,6 @@
+import numpy as np
 from htmd.molecule.molecule import Molecule
 from htmd.model import Model, getStateStatistic
-import numpy as np
 
 
 def get_params_model(model):
@@ -65,7 +65,7 @@ def get_data(model, metr, skip=1):
             Frames to skip while projecting the data. Default = 1
         """
     from htmd.projections.metric import Metric
-    metric = Metric(model.data.simlist, skip = skip)
+    metric = Metric(model.data.simlist, skip=skip)
     metric.set(metr)
     data = metric.project()
     return data
@@ -83,9 +83,9 @@ def create_bulk(model, metric):
         Metric to describe a bulk vs not-bulk situation. In general is the contacts 
         between protein and ligand selection with groupsels set to 'all'
     """
-    from htmd.model import getStateStatistic
     data = get_data(model, metric)
-    data_by_micro = np.array(getStateStatistic(model, data, states=range(model.micronum), statetype="micro"))
+    data_by_micro = np.array(getStateStatistic(model, data, 
+                                               states=range(model.micronum), statetype="micro"))
     min_contacts = np.where(data_by_micro == np.min(data_by_micro))[0]
     model.createState(min_contacts)
     print(f"Macrostate created with micros: {min_contacts}")
@@ -114,17 +114,17 @@ def cluster_macro(model, data, macro, method=np.mean):
     if macro < 0 or macro > model.macronum:
         raise Exception("Macro out of bounds")
     mol = Molecule(model.data.simlist[0].molfile)
-    data_by_micro = getStateStatistic(model, data, states=model.metastable_sets[macro], statetype="micro", method=method)
+    data_by_micro = getStateStatistic(model, data, states=model.metastable_sets[macro], 
+                                      statetype="micro", method=method)
     clusters = MiniBatchKMeans().fit(data_by_micro)
 
     for i in range(len(clusters.cluster_centers_)):
         label_micro = model.metastable_sets[macro][np.where(clusters.labels_ == i)[0]]
-        print(i, label_micro)
         cluster = getStateStatistic(model, data,
-                                 states=label_micro, statetype="micro", method=np.mean)
-        labels = [ 'Micro {}'.format(i) for i in label_micro ]
+                                    states=label_micro, statetype="micro", method=np.mean)
+        labels = ['Micro {}'.format(i) for i in label_micro]
         plot_contacts(cluster, mol, labels=labels, title=f"Cluster {i}", 
-            plot=False, save=f"/home/pablo/test_info/{i}_plt_contacts.png")
+                      plot=False, save=f"/home/pablo/test_info/{i}_plt_contacts.png")
         model.createState(label_micro)
 
 def compute_all_mfpt(model):
@@ -139,7 +139,8 @@ def compute_all_mfpt(model):
     Returns
     -------
     mfpt: np.ndarray
-        Matrix with the mfpt between states: "from... Macro of row index to... Macro of column index"
+        Matrix with the mfpt between states: 
+        "from... Macro of row index to... Macro of column index"
     """
     all_mfpt = []
     for source in range(model.macronum):
@@ -159,7 +160,6 @@ def scan_clusters(model, nclusters, out_dir):
     out_dir : str
         Directory to save the generated plots
     """
-    from htmd.model import Model
     from sklearn.cluster import MiniBatchKMeans
     for i in nclusters:
         model.data.cluster(MiniBatchKMeans(n_clusters=i), mergesmall=5)
@@ -189,16 +189,12 @@ def aux_plot(model, metric, mol, plot_func,skip=1, normalize=False, method=np.me
     **kwargs
         Additional arguments for the plotting function
     """
-    from IDP_htmd.model_utils import get_data
-    from htmd.model import getStateStatistic
-    import numpy as np
     data = get_data(model, metric, skip=skip)
-    data_summary = getStateStatistic(model, data, 
-        method=method, states=range(model.macronum),
-        statetype="macro")
+    data_summary = getStateStatistic(model, data, method=method, states=range(model.macronum),
+                                     statetype="macro")
     
     if normalize:
-        _, counts = np.unique(mol.resid, return_counts = True)
+        _, counts = np.unique(mol.resid, return_counts=True)
         data_summary = np.array(data_summary) / counts
 
     try:
@@ -208,7 +204,6 @@ def aux_plot(model, metric, mol, plot_func,skip=1, normalize=False, method=np.me
 
 
 if __name__ == "__main__":
-    from htmd.model import Model
     model = Model()
     base_dir = "/workspace8/p27_sj403/27-10-2018_p27_sj403/"
     model.load(f"{base_dir}final_model_split.dat")
