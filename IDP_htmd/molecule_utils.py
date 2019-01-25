@@ -1,6 +1,9 @@
 #!/shared/pablo/miniconda3/bin/python
-from htmd.molecule.molecule import Molecule
 import numpy as np 
+from htmd.molecule.molecule import Molecule
+
+#TODO: refacto to make a class IDP_Molecule extending original molecule
+
 
 def create_dummy_atom():
     return Molecule("/shared/pablo/IDP_htmd/IDP_htmd/ref_files/dummy.pdb")
@@ -102,4 +105,4 @@ if __name__ == "__main__":
     mol.view(sel="noh and protein", color="Name", style="Licorice")
     pocket = read_pocket("/shared/pablo/IDP_htmd/IDP_htmd/ref_files/cube_files/output.cube")
     pocket.write("/home/pablo/test.pdb")
-    # pocket.view(style="CPK", color="Occupancy")
+    pocket.view(style="CPK", color="Occupancy")

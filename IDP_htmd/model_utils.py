@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.cluster import MiniBatchKMeans
 from htmd.molecule.molecule import Molecule
 from htmd.model import Model, getStateStatistic
 
@@ -92,7 +93,7 @@ def create_bulk(model, metric):
     return min_contacts
 
 
-def cluster_macro(model, data, macro, method=np.mean):
+def cluster_macro(model, data, macro, method=np.mean, cluster_method=MiniBatchKMeans):
     """Modifies the model by splitting a macrostate.
     In first place, the mean for the given data is calculated for each micro
     of the model. This data is then clustered using the MiniBatchKMeans algorithm
@@ -108,7 +109,7 @@ def cluster_macro(model, data, macro, method=np.mean):
     method : TYPE, optional
         Description
     """
-    from sklearn.cluster import MiniBatchKMeans
+    # from sklearn.cluster import MiniBatchKMeans, AffinityPropagation
     from IDP_htmd.IDP_model import plot_contacts
 
     if macro < 0 or macro > model.macronum:
@@ -116,15 +117,17 @@ def cluster_macro(model, data, macro, method=np.mean):
     mol = Molecule(model.data.simlist[0].molfile)
     data_by_micro = getStateStatistic(model, data, states=model.metastable_sets[macro], 
                                       statetype="micro", method=method)
-    clusters = MiniBatchKMeans().fit(data_by_micro)
+    clusters = cluster_method().fit(data_by_micro)
 
-    for i in range(len(clusters.cluster_centers_)):
+    for i in range(len(clusters.cluster_centers_) - 1):
         label_micro = model.metastable_sets[macro][np.where(clusters.labels_ == i)[0]]
-        cluster = getStateStatistic(model, data,
-                                    states=label_micro, statetype="micro", method=np.mean)
-        labels = ['Micro {}'.format(i) for i in label_micro]
-        plot_contacts(cluster, mol, labels=labels, title=f"Cluster {i}", 
-                      plot=False, save=f"/home/pablo/test_info/{i}_plt_contacts.png")
+        # cluster = getStateStatistic(model, data,
+        #                             states=label_micro, statetype="micro", method=np.mean)
+        # labels = ['Micro {}'.format(i) for i in label_micro]
+        # plot_contacts(cluster, mol, labels=labels, title=f"Cluster {i}", 
+        #               plot=True, 
+        #               # save=f"/home/pablo/test_info/{i}_plt_contacts.png"
+        #               )
         model.createState(label_micro)
 
 def compute_all_mfpt(model):
@@ -169,7 +172,7 @@ def scan_clusters(model, nclusters, out_dir):
 
 def aux_plot(model, metric, mol, plot_func,skip=1, normalize=False, method=np.mean, **kwargs):
     """Summary
-    
+
     Parameters
     ----------
     model : TYPE
@@ -192,7 +195,7 @@ def aux_plot(model, metric, mol, plot_func,skip=1, normalize=False, method=np.me
     data = get_data(model, metric, skip=skip)
     data_summary = getStateStatistic(model, data, method=method, states=range(model.macronum),
                                      statetype="macro")
-    
+
     if normalize:
         _, counts = np.unique(mol.resid, return_counts=True)
         data_summary = np.array(data_summary) / counts

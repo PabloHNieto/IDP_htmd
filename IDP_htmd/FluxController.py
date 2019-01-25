@@ -27,19 +27,20 @@ class FluxController():
 
 
     def __init__(self, paths=None, pathfluxes=None, model=None,
-                 sink=None, bulk=None, nodes=None, save_dir=None):
+                 sink=None, source=None, nodes=None, save_dir=None):
+        self.model = model
+        self.newsets = None
+        self.nodes = nodes
         self.paths = paths
         self.pathfluxes = pathfluxes
-        self.model = model
-        self.sink = sink
-        self.source = bulk
-        self.nodes = nodes
         self.save_dir = save_dir
+        self.sink = sink
+        self.source = source
         
-        if (self.model and self.source and self.sink and
-                self.paths is None and self.pathfluxes is None):
+        if (model and isinstance(sink, int) and isinstance(source, int) and
+                paths is None and pathfluxes is None):
             print("Calculating rates")
-            self.paths, self.pathfluxes = self.calculate_in_out_rates()
+            self.paths, self.pathfluxes, self.newsets = self.calculate_in_out_rates(True)
         
         if (not self.nodes and self.model and isinstance(self.paths, np.ndarray) 
                 and isinstance(self.pathfluxes, np.ndarray)):
@@ -82,7 +83,7 @@ class FluxController():
                     np.array([self.paths, self.pathfluxes]))
 
 
-    def calculate_in_out_rates(self):
+    def calculate_in_out_rates(self, coarse=False):
         """[summary]
         
         Parameters
@@ -115,11 +116,23 @@ class FluxController():
         tpt = msm.tpt(self.model.msm,
                       self.model.metastable_sets[self.source],
                       self.model.metastable_sets[self.sink])
-        paths, pathfluxes = tpt.pathways(fraction=0.9)
 
+        if coarse:
+            newsets, tpt = tpt.coarse_grain(self.model.metastable_sets)
+            paths, pathfluxes = tpt.pathways(fraction=0.9)
+
+            # Create a lookup table for new datasets
+            macro2macro = np.zeros(self.model.macronum, dtype=int)
+            for idx, micro in enumerate(newsets):
+                macro2macro[idx] = self.model.macro_ofmicro[micro[0]]
+        else:
+            paths, pathfluxes = tpt.pathways(fraction=0.9)
+            macro2macro = self.model.macro_ofmicro
+        
         if self.save_dir:
             np.save(f"{self.save_dir}/path_{self.sink}_fluxes.npy", np.array([paths, pathfluxes]))
-        return paths, pathfluxes
+        
+        return np.array(paths), np.array(pathfluxes), macro2macro
 
 
     def load_paths(self, model, out_macro, bulk_macro, filename):
@@ -172,17 +185,21 @@ class FluxController():
         """
 
         nodes = {}
-        for idx, (path, flux) in enumerate(zip(self.paths, self.pathfluxes)):
-            tmp = [str(self.model.macro_ofmicro[micro]) for micro in path]
-            tmp_2 = []
-            #Removing consecutive identical values
-            for idx2, _ in enumerate(tmp[0:-1]):
-                if idx2 == 0:
-                    tmp_2.append(tmp[idx])
-                if idx2 > 0 and tmp[idx] != tmp[idx2 + 1]:
-                    tmp_2.append(tmp[idx + 1])
 
-            tmp = "->".join(tmp_2)
+        for idx, (path, flux) in enumerate(zip(self.paths, self.pathfluxes)):
+            if self.newsets is None:
+                tmp = [str(self.model.macro_ofmicro[micro]) for micro in path]
+                tmp_2 = []
+                #Removing consecutive identical values
+                for idx2, _ in enumerate(tmp[0:-1]):
+                    if idx2 == 0:
+                        tmp_2.append(tmp[idx2])
+                    if idx2 > 0 and tmp[idx2] != tmp[idx2 + 1]:
+                        tmp_2.append(tmp[idx2 + 1])
+                tmp = "->".join(tmp_2)
+            else:
+                tmp = "->".join([str(self.newsets[i]) for i in path])
+
             if tmp in nodes.keys():
                 nodes[tmp] += flux
             else:
@@ -206,12 +223,15 @@ class FluxController():
         """
         import matplotlib.pyplot as plt
 
-        start_paths = [f'{self.source}->{i}->' for i in range(self.model.macronum)]
-        end_paths = [f'->{i}->{self.sink}'.format(i) for i in range(self.model.macronum)]
+        source, sink = self.source, self.sink
+
+        start_paths = [f'{source}->{i}->' for i in range(self.model.macronum)]
+        end_paths = [f'->{i}->{sink}'.format(i) for i in range(self.model.macronum)]
 
         start_fluxes = self.get_flux_from_path(start_paths, print_paths=False)
         end_fluxes = self.get_flux_from_path(end_paths, print_paths=False)
         
+
         if labels:
             end_fluxes = [x for y, x in sorted(zip(start_paths, end_fluxes), 
                                                key=lambda pair: len(pair[0]))]
@@ -228,7 +248,7 @@ class FluxController():
         _, _ = plt.xticks(list(range(len(start_fluxes))), labels, rotation='vertical', ha="center")
         _ = plt.legend(loc='upper right', shadow=True)
 
-        plt.title(f"In & Out rates from Macro-{self.source} to Macro-{self.sink}")
+        plt.title(f"In & Out rates from Macro-{source} to Macro-{sink}")
         plt.xlabel("Macrostate")
         plt.ylabel("% Flux")
         plt.xticks(rotation=45)
@@ -279,6 +299,7 @@ class FluxController():
 
         y_limit = np.max([f0.model.macronum, f1.model.macronum])
         plt.ylim((-.5, y_limit + .5))
+        _, _ = plt.yticks(list(range(f1.model.macronum)), list(range(f1.model.macronum))[::-1])
         upper_bound = np.max(np.array([start_f0_flux, start_f1_flux, end_f1_flux, end_f0_flux])) + 5
         plt.xlim((-1 * upper_bound, upper_bound))
         plt.vlines(0, -1, 16, color=(0, 0, 0, 0.7))

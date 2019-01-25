@@ -222,7 +222,7 @@ class ModelAnalysis(object):
             save=self.out_folder + "/{}.png".format(self.plot_dihedral), chain_id="P1",
             start_index=self.start_index)
 
-    
+
     def plot_atom_mol_contact(self, sel1="noh and protein", sel2="noh and resname MOL", threshold=5):
         """Plot a molecule-residue contact map.
         
@@ -266,7 +266,7 @@ class ModelAnalysis(object):
 
         mapping = mol_contact_map_metric.getMapping(self.mol)
         aux_plot(self.model, mol_contact_map_metric, self.mol, plot_contacts, skip=self.skip, method=np.mean,
-            mod=self.model, title="Contacts by residue",
+            title="Contacts by residue",
             plot=False, save=f'{self.out_folder}/{self.plot_mol_contacts}.png')
 
     
@@ -308,6 +308,7 @@ class ModelAnalysis(object):
                 info['kinetics'] = kinetics
 
             r = Render("analysis", f"{self.out_folder}IDP_summary", info)
+
 
     def calc_kinetics(self, source=None):
         """Calculates kinetics rates for the model
