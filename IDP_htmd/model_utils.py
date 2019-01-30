@@ -72,10 +72,11 @@ def get_data(model, metr, skip=1):
     return data
 
 
-def create_bulk(model, metric):
+def create_bulk(model, metric=None, data=None):
     """Creates a bulk macrosates
     Modifies passed model
     It is intended to be used in ligand binding escenarios.
+    
     Parameters
     ----------
     model : TYPE
@@ -83,8 +84,25 @@ def create_bulk(model, metric):
     metric : TYPE
         Metric to describe a bulk vs not-bulk situation. In general is the contacts 
         between protein and ligand selection with groupsels set to 'all'
+    data : None, optional
+        Description
+    
+    Returns
+    -------
+    TYPE
+        Description
+    
+    Raises
+    ------
+    Exception
+        Description
     """
-    data = get_data(model, metric)
+    if not metric and not data:
+        raise Exception("Either a metric or a data object must be provided")
+    
+    if metric and not data:
+        data = get_data(model, metric)
+
     data_by_micro = np.array(getStateStatistic(model, data, 
                                                states=range(model.micronum), statetype="micro"))
     min_contacts = np.where(data_by_micro == np.min(data_by_micro))[0]
@@ -170,7 +188,7 @@ def scan_clusters(model, nclusters, out_dir):
         new_mod.plotTimescales(plot=False, save=out_dir+"1_its-{}_clu".format(i))
 
 
-def aux_plot(model, metric, mol, plot_func,skip=1, normalize=False, method=np.mean, **kwargs):
+def aux_plot(model, mol, plot_func, metric=None, skip=1, normalize=False, method=np.mean, data=None, **kwargs):
     """Summary
 
     Parameters
@@ -192,7 +210,12 @@ def aux_plot(model, metric, mol, plot_func,skip=1, normalize=False, method=np.me
     **kwargs
         Additional arguments for the plotting function
     """
-    data = get_data(model, metric, skip=skip)
+    if not metric and not data:
+        raise Exception("Either a metric or a data object must be provided")
+        
+    if not data:
+        data = get_data(model, metric, skip=skip)
+
     data_summary = getStateStatistic(model, data, method=method, states=range(model.macronum),
                                      statetype="macro")
 
@@ -204,6 +227,19 @@ def aux_plot(model, metric, mol, plot_func,skip=1, normalize=False, method=np.me
         plot_func(data_summary, mol, **kwargs)
     except Exception as e:
         print("Plotting error: ", e)
+
+
+def bootstrap(model, rounds, fraction=0.8, clusters=500):
+    import os
+    from htmd.model import Model
+    from sklearn.cluster import MiniBatchKMeans
+
+    for boot_round in range(rounds):
+        dataBoot = model.data.bootstrap(fraction)
+        print(f"Starting a new round of bootstrap - {boot_round}")
+        dataBoot.cluster(MiniBatchKMeans(n_clusters=clusters), mergesmall=5)
+        model = Model(dataBoot)
+        yield(model)
 
 
 if __name__ == "__main__":

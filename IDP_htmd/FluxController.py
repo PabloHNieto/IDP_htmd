@@ -36,6 +36,7 @@ class FluxController():
         self.save_dir = save_dir
         self.sink = sink
         self.source = source
+        self.tpt = None
         
         if (model and isinstance(sink, int) and isinstance(source, int) and
                 paths is None and pathfluxes is None):
@@ -132,6 +133,7 @@ class FluxController():
         if self.save_dir:
             np.save(f"{self.save_dir}/path_{self.sink}_fluxes.npy", np.array([paths, pathfluxes]))
         
+        self.tpt = tpt
         return np.array(paths), np.array(pathfluxes), macro2macro
 
 

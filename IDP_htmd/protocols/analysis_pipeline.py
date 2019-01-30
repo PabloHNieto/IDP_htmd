@@ -75,8 +75,12 @@ class ModelAnalysis(object):
         self.save_model = True
         self.rg_analysis = True
         self.plot_dihedral = 'dihedral'
+        self.plot_dihedral_data = None
         self.plot_contacts = None
+        self.plot_contacts_data = None
         self.plot_mol_contacts = False
+        self.plot_mol_contacts_data = None
+        self.plot_atom_mol_data = None
         self.start_index = 0
         self.cluster_scan = False
         self.model = None
@@ -85,10 +89,9 @@ class ModelAnalysis(object):
         self.temperature = 310
         self.concentration = None
 
-        if (not self.out_folder or not self.input_folder):
+        if not self.out_folder or not self.input_folder:
             print("Not data or out folder provided")
 
-    
     def perfom_analysis(self):
         """Perform a MSM analysis given the data
             The pipeline includes loading or creatin a model,
@@ -120,7 +123,7 @@ class ModelAnalysis(object):
 
         self.generate_html_summary()
 
-    
+
     def write_parameters(self, excluded=['out_folder', 'input_folder', 'model', 'mol', 'plot_contacts', 'plot_dihedral',
         'fes', 'plot_mol_contacts', 'rg_analysis', 'start_index', 'bulk_split', 'save_model']):
         """Write the parameters set for the analysis to a json file
@@ -160,34 +163,34 @@ class ModelAnalysis(object):
                 self.fes, self.rg_analysis, self.save_model)
 
         if isinstance(self.model, str):
-          try:
-            print("Loading model")
-            model = Model()
-            model.load(self.model)
-            self.model = model
-          except:
-            print("Could not load the model")
-            return
+            try:
+                print("Loading model")
+                model = Model()
+                model.load(self.model)
+                self.model = model
+            except:
+                print("Could not load the model")
+                return
 
         if isinstance(self.model, Model):
             print("Model loaded")
 
         self.mol = Molecule(self.model.data.simlist[0].molfile)
 
-    
+
     def additional_plots(self):
         """Createa additinal plot following the parameters set for the instance of the class
         """
         if self.plot_dihedral:
-            self.plot_dih()
+            self.plot_dih(self.plot_dihedral_data)
 
         if self.plot_mol_contacts:
-            self.plot_mol_contact()
-            self.plot_atom_mol_contact()
+            self.plot_mol_contact(self.plot_mol_contacts_data)
+            self.plot_atom_mol_contact(self.plot_atom_mol_data)
 
         if self.plot_contacts:
-            for name, sel, threshold in self.plot_contacts:
-                self.plot_contact_map(name, sel, threshold)
+            for name, sel, threshold, data in self.plot_contacts:
+                self.plot_contact_map(name, sel, threshold, data)
 
     
     def plot_contact_map(self, name, selection="noh and protein", threshold=4):
@@ -207,23 +210,23 @@ class ModelAnalysis(object):
             groupsel1="residue", groupsel2="residue", threshold=threshold, metric="contacts")
         
         mapping = contact_metric.getMapping(self.mol)
-        aux_plot(self.model, contact_metric, self.mol, contact_plot, skip=self.skip, method=np.mean,
-          mapping=mapping, cols=2, rows=int(self.model.macronum/2)+self.model.macronum%2,
+        aux_plot(self.model, self.mol, contact_plot, metric=contact_metric, skip=self.skip, method=np.mean,
+          mapping=mapping, cols=2, rows=int(self.model.macronum/2)+self.model.macronum%2, data=data,
           plot=False, save=self.out_folder + "/{}.png".format(name))
 
     
-    def plot_dih(self):
+    def plot_dih(self, data=None):
         """Creates a plot of the standard deviation of the dihedral angles of the protein by macrostate
         """
         from htmd.projections.metricdihedral import MetricDihedral
 
         dih_metric = MetricDihedral(protsel="protein")
-        aux_plot(self.model, dih_metric, self.mol, plot_dihedral, skip=self.skip, method=np.std,
+        aux_plot(self.model, self.mol, plot_dihedral, metric=dih_metric, data=data, skip=self.skip, method=np.std,
             save=self.out_folder + "/{}.png".format(self.plot_dihedral), chain_id="P1",
             start_index=self.start_index)
 
 
-    def plot_atom_mol_contact(self, sel1="noh and protein", sel2="noh and resname MOL", threshold=5):
+    def plot_atom_mol_contact(self, data=None, sel1="noh and protein", sel2="noh and resname MOL", threshold=5):
         """Plot a molecule-residue contact map.
         
         Parameters
@@ -242,11 +245,12 @@ class ModelAnalysis(object):
             groupsel1="residue", threshold=threshold, metric="contacts")
         mapping = mol_contact_map_metric.getMapping(self.mol)
 
-        aux_plot(self.model, mol_contact_map_metric, self.mol, contact_plot_by_atom, skip=self.skip, method=np.mean,
-            mapping=mapping, label=label, save=f'{self.out_folder}/{self.plot_mol_contacts}_by_atom.png')
+        aux_plot(self.model, self.mol, contact_plot_by_atom, metric=mol_contact_map_metric, 
+                 skip=self.skip, method=np.mean, data=data,
+                 mapping=mapping, label=label, save=f'{self.out_folder}/{self.plot_mol_contacts}_by_atom.png')
 
     
-    def plot_mol_contact(self, sel1="noh and protein", sel2="noh and resname MOL", threshold=4):
+    def plot_mol_contact(self, data=None, sel1="noh and protein", sel2="noh and resname MOL", threshold=4):
         """Plot a molecule-residue contact map.
         
         Parameters
@@ -265,8 +269,8 @@ class ModelAnalysis(object):
             groupsel1="residue", groupsel2="all", threshold=5, metric="contacts")
 
         mapping = mol_contact_map_metric.getMapping(self.mol)
-        aux_plot(self.model, mol_contact_map_metric, self.mol, plot_contacts, skip=self.skip, method=np.mean,
-            title="Contacts by residue",
+        aux_plot(self.model, self.mol, plot_contacts, metric=mol_contact_map_metric, skip=self.skip, method=np.mean,
+            title="Contacts by residue", data=data,
             plot=False, save=f'{self.out_folder}/{self.plot_mol_contacts}.png')
 
     
@@ -361,7 +365,7 @@ class ModelAnalysis(object):
         mol_contact_map_metric = MetricSasa(sel='protein', probeRadius=1.4, numSpherePoints=500, mode='residue')
 
         mapping = mol_contact_map_metric.getMapping(self.mol)
-        aux_plot(self.model, mol_contact_map_metric, self.mol, plot_contacts, normalize=False, skip=self.skip, method=np.mean,
+        aux_plot(self.model, self.mol, plot_contacts, metric=mol_contact_map_metric, normalize=False, skip=self.skip, method=np.mean,
             mod=self.model, title="Contacts by residue", vmax=None,
             plot=False, save=f'{self.out_folder}/no_sasa_test.png')
 
