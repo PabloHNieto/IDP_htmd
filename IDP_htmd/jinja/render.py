@@ -12,8 +12,8 @@ class Render():
         trim_blocks=False)
 
     def __init__(self, template, outName, info):
-        self.outName = outName + '.html'
-        self.template = template + '.html'
+        self.outName = f"{outName}.html"
+        self.template = f"{template}.html"
         self.info = info
         self.create_index_html()
 

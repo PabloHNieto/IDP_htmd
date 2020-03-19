@@ -6,6 +6,11 @@ from tqdm import tqdm
 import networkx as nx
 from htmd.util import ensurelist
 
+three_letter ={'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
+                'D':'ASP', 'N':'ASN', 'H':'HSD', 'W':'TRP', 'F':'PHE', 'Y':'TYR', \
+                'R':'ARG', 'K':'LYS', 'S':'SER', 'T':'THR', 'M':'MET', 'A':'ALA', \
+                'G':'GLY', 'P':'PRO', 'C':'CYS', 'MOL':'MOL'}
+
 def plot_RG(data, mol, chain_id="P1", labels=None, plot=True, save=None):
     """Plots the radious of gyration of a model by macrosate
     
@@ -26,17 +31,18 @@ def plot_RG(data, mol, chain_id="P1", labels=None, plot=True, save=None):
         File path where to save the picture (the default is None, which does not save the picture)
     
     """
-    from IDP_htmd.MetricRadiusGyration import MetricRG
+    from IDP_htmd.MetricRadiusGyration import predictRG
+
+    plt.figure(figsize=(7,7))
 
     seq = mol.sequence()[chain_id]
-    lower_bound, upper_bound = MetricRG.predict(len(seq))
+    lower_bound, upper_bound = predictRG(len(seq))
     limits = [ [lower_bound, upper_bound] for i in range(len(data[0])) ]
 
     if not labels:
         labels = [ 'Macro-{}'.format(i) for i,_ in enumerate(data[0])]
         labels[-1] = "Aggregated"
     
-    plt.figure()
     plt.bar(range(len(data[0])), data[0], yerr=data[1], width=0.8)
     plt.xticks(range(len(data[0])), labels, rotation=45)
 
@@ -51,8 +57,8 @@ def plot_RG(data, mol, chain_id="P1", labels=None, plot=True, save=None):
         plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
 
 def plot_contacts(data, mol, idx=None, model=None, labels=None, 
-    title=None, plot=True, save=None, vmin=0, vmax=1, 
-    xlabel=None, cmap="viridis"):
+    title=None, save=None, vmin=0, vmax=1, 
+    xlabel=None, cmap="viridis", ax=None):
     """[summary]
     
     Parameters
@@ -87,13 +93,14 @@ def plot_contacts(data, mol, idx=None, model=None, labels=None,
         Matplotlib colormap name (the default is "viridis")
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
-    
+
     if not idx:
         idx = mol.resid[0]
-    xlabels = [b + str(i+idx) for i,b in enumerate(mol.sequence()['P1'])]
+    xlabels = [f'{three_letter[b]}{i+idx}' for i,b in enumerate(mol.sequence()['P1'])]
 
-    plt.figure(figsize=(8, len(data)), dpi=300)
-    ax = plt.gca()
+    if ax == None: ax = plt.gca() 
+    else: ax = ax
+
     im = ax.imshow(np.flip(data, 0)[::-1], vmin=vmin, vmax=vmax, cmap=cmap)
 
     if title:
@@ -112,29 +119,24 @@ def plot_contacts(data, mol, idx=None, model=None, labels=None,
         ax.set_yticks(y)
         ax.set_yticklabels(ylabels)
     else:
-        y = [i for i in range(len(labels))]
-        ax.set_yticks(y)
-        ax.set_yticklabels(labels)
+        # y = [i-0.5 for i in range(len(labels))]
+        ax.set_yticks(range(len(labels)))
+        ax.set_yticklabels(labels, ha="right")
+    ax.set_ylim(len(labels)-0.5, -0.5)
     ax.set_xlabel(xlabel)
     
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cax = divider.append_axes("right", size="3%", pad=0.05)
 
-    plt.colorbar(im, cax=cax)
-
-    if plot:
-        plt.show()
+    cbar = plt.colorbar(im, cax=cax)
+    cbar.set_label(r"$P(contact)$", rotation=90)
+    plt.sca(ax)
 
     if save:
         plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
 
 
 def _atom_contact_plot(ver, ax, mol, label, cmap="viridis"):
-
-    three_letter ={'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
-        'D':'ASP', 'N':'ASN', 'H':'HSD', 'W':'TRP', 'F':'PHE', 'Y':'TYR', \
-        'R':'ARG', 'K':'LYS', 'S':'SER', 'T':'THR', 'M':'MET', 'A':'ALA', \
-        'G':'GLY', 'P':'PRO', 'C':'CYS', 'MOL':'MOL'}
 
     im = ax.imshow(ver, vmin=0, vmax=1, aspect="equal", cmap=cmap)
     all_res = [three_letter[i]+str(b) for i, b in zip(list(mol.sequence()['P1']), list(set(mol.resid))[1:])] 
@@ -147,7 +149,7 @@ def _atom_contact_plot(ver, ax, mol, label, cmap="viridis"):
     ax.set_aspect('auto')
     return im
 
-def contact_plot_by_atom(all_data, mol, mapping=None, label=None, chain_id="P1", title=None, plot=True, save=None, **kwds):
+def contact_plot_by_atom(all_data, mol, mapping=None, label=None, chain_id="P1", title=None, save=None, ax=None, **kwds):
     """Plots a contact map for each macrostate 
     
     Parameters
@@ -172,6 +174,9 @@ def contact_plot_by_atom(all_data, mol, mapping=None, label=None, chain_id="P1",
     """
     sequence_length = len(mol.sequence()[chain_id])
     dimension = int(len(all_data[0])/sequence_length)
+    
+    if ax: plt.sca(ax)
+    
     f, axes = plt.subplots(ncols=1, 
         nrows=len(all_data), 
         figsize=(10, len(all_data)*1.5), 
@@ -185,23 +190,22 @@ def contact_plot_by_atom(all_data, mol, mapping=None, label=None, chain_id="P1",
 
     if len(all_data) == 1:
             data = np.transpose(all_data[0].reshape(sequence_length, dimension))
-            z = _atom_contact_plot(data, axes, mol, **kwds)
+            z = _atom_contact_plot(data, axes, mol, label[0], **kwds)
     else:
         for b,(r, data) in enumerate(zip(axes.flat, all_data)):
             data = np.transpose(data.reshape(sequence_length, dimension))
             z = _atom_contact_plot(data, r, mol, label[b], **kwds)
 
     cbar_ax = f.add_axes([0.92, 0.15, 0.025, 0.7])
-    f.colorbar(z, cax=cbar_ax)
+    cbar = f.colorbar(z, cax=cbar_ax)
+    cbar.set_label(r"$P(contact)$", rotation=90)
 
-    if plot:
-        plt.show()
 
     if save:
         plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
+    plt.sca(axes[-1])
 
-
-def plot_dihedral(data, mol, start_index=1, chain_id="X", plot=True, save=None, title=None, ylabel=None, **kwds):
+def plot_dihedral(data, mol, refmol=None, start_index=1, chain_id="X", save=None, factor=1, title=None, ylabel=None, return_data=False, **kwds):
     """ Plots the standard deviation of dihedral angles by macrostates
 
     Parameters
@@ -214,57 +218,256 @@ def plot_dihedral(data, mol, start_index=1, chain_id="X", plot=True, save=None, 
     save : str
             Path of the file in which to save the figure
     """
+    import matplotlib as mpl
+    mpl.rcParams['axes.linewidth'] = 0.8
+    def _merge(arr):
+        half1 = arr[0::2]
+        half2 = arr[1::2]
+        newArr = [ x for i in zip(half1[1:], half2[:-1]) for x in i ]
+        return np.array([half1[0]] + newArr + [half2[-1]])
     
-    label = [b + str(i + start_index) for i,b in enumerate(mol.sequence()[chain_id])]
-    newLabel = ["{}-{}".format(label[idx], label[idx + 1]) for idx in list(range(len(label)-1))]
+    label = [f"{three_letter[b]}{i + start_index}" for i,b in enumerate(mol.sequence()[chain_id])]
+    
+    # newLabel = ["{}-{}".format(label[idx], label[idx + 1]) for idx in list(range(len(label)-1))]
 
-    yLabel = ["Cosine", "Sine"]
+    if refmol:
+        from moleculekit.projections.metricdihedral import MetricDihedral 
+        refmol_data = MetricDihedral().project(refmol).ravel()
+        ref_seq = list(refmol.sequence().values())[0]
+        mol_seq = mol.sequence()[chain_id]
+        try:
+            seq_offset_start = mol_seq.index(ref_seq)
+        except:
+            refmol = None
+        # ref_data[seq_offset_start:seq_offset_start+len(refmol_data)] = refmol_data
+        ref_data = np.abs(refmol_data)
+        ref_std_sin = _merge(ref_data[0::2])
+        ref_std_cos = _merge(ref_data[1::2])
 
-    fig, axes = plt.subplots(figsize=(6, len(data)*1.6), 
+    fig, axes = plt.subplots(figsize=(factor*12, 3*factor*len(data)), 
         nrows=len(data), ncols=1, sharex=True, dpi=300)
 
-    if title:
-        fig.suptitle(title)
+    if title: fig.suptitle(title)
 
     try:
         len(axes)
     except:
         axes = [axes]
+    
+    all_sin = []
+    all_cos = []
 
     for idx, (ax, dat)  in enumerate(zip(axes, data)):
         newSTDsin = _merge(dat[0::2])
         newSTDcos = _merge(-1*dat[1::2])
-        xticks = [i-0.51 for i in range(0, len(newSTDsin)+1, 2)]
+        all_sin.append(newSTDsin)
+        all_cos.append(newSTDcos)
+        xticks = [i - 0.51 for i in range(0, len(newSTDsin)+1, 2)]
+
+        if refmol:
+            clean_cos = -1*(ref_std_cos - newSTDcos[seq_offset_start*2:seq_offset_start*2 + len(ref_std_cos)])
+            clean_sin = ref_std_sin - newSTDsin[seq_offset_start*2:seq_offset_start*2 + len(ref_std_sin)]
+            ref_std_clean_cos =  np.array([None for i in range(len(newSTDcos))])
+            ref_std_clean_sin =  np.array([None for i in range(len(newSTDsin))])
+            ref_std_clean_cos[seq_offset_start*2:seq_offset_start*2 + len(ref_std_cos)] = clean_cos
+            ref_std_clean_sin[seq_offset_start*2:seq_offset_start*2 + len(ref_std_sin)] = clean_sin
+            ax.errorbar(range(len(newSTDsin)), ref_std_clean_cos, alpha=0.5, lw=0.9, fmt="-", capsize=1, color="red")
+            ax.errorbar(range(len(newSTDsin)), ref_std_clean_sin, alpha=0.5, lw=0.9, fmt="-", capsize=1, color="red")
         ax.bar(range(len(newSTDsin)), newSTDsin, lw=0.5)
         ax.bar(range(len(newSTDsin)), newSTDcos, lw=0.5)
 
-        ax.axhline(y=0.50, xmin=0, xmax=len(dat), linestyle="dashed", color="red", lw=0.5)
-        ax.axhline(y=0.15, xmin=0, xmax=len(dat), linestyle="dashed", color="red", lw=0.5)
-        ax.axhline(y=0.0, xmin=0, xmax=len(dat), color="black", lw=0.8)
-        ax.axhline(y=-0.50, xmin=0, xmax=len(dat), linestyle="dashed", color="red", lw=0.5)
-        ax.axhline(y=-0.15, xmin=0, xmax=len(dat), linestyle="dashed", color="red", lw=0.5)
-        ax.set_xlim(-2, len(newSTDsin)+2)
-        ax.set_ylim(-1.2, 1.2)
+        ax.axhline(y=0.50, xmin=0, xmax=len(dat), linestyle="dashed", color="red", lw=factor)
+        ax.axhline(y=0.15, xmin=0, xmax=len(dat), linestyle="dashed", color="black", lw=factor)
+        # ax.axhline(y=1, xmin=0, xmax=len(dat), linestyle="dashed", color="red", lw=0.25)
 
+        ax.axhline(y=-0.50, xmin=0, xmax=len(dat), linestyle="dashed", color="red", lw=factor)
+        ax.axhline(y=-0.15, xmin=0, xmax=len(dat), linestyle="dashed", color="black", lw=factor)
+
+        ax.axhline(y=0.0, xmin=0, xmax=len(dat), color="black", lw=0.5)
+        
+        # ax.axhline(y=-1, xmin=0, xmax=len(dat), linestyle="dashed", color="red", lw=0.25)
+        
+        ax.set_xlim(-1, len(newSTDsin))
+        ax.set_ylim(-1, 1)
+        ax.xaxis.grid()
+
+        # ax.yaxis.set_label_position("right")
+        if ylabel and len(ylabel) >= len(axes): ax.set_ylabel(ylabel[idx], rotation=90)
+        ax.yaxis.set_tick_params(width=.5)
+        ax.set_yticks([0.5, -0.5])
+        # , rotation='vertical', ha="center",
+        ax.set_yticklabels(["Sine", "- Cosine"], ha="right")
         ax.set_xticks(xticks)
-        ax.set_yticks([-0.1, 0.7])
-        ax.set_xticklabels(newLabel, rotation='vertical', ha="left", fontdict={'size': "small"})
-        ax.set_yticklabels(yLabel, rotation='vertical', ha="center")
-        if ylabel:
-            ax.set_ylabel(ylabel[idx])
-
+        ax.set_xticklabels(label, rotation='vertical', ha="left")
+            
         fig.subplots_adjust(hspace=0.0)
+
+    ax.xaxis.set_tick_params(width=.5)
+    
+    plt.sca(axes[0])
+    
+    if save:
+        plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
+    
+    if return_data: return np.array(all_cos), np.array(all_sin)
+
+def plot_dihedral2(data, mol, refmol=None, chain_id="P1", start_index=1, title=None, std_data=None, ax=None, save=None):
+    import matplotlib.pyplot as plt
+
+    def _merge(arr):
+        half1 = arr[0::2]
+        half2 = arr[1::2]
+        newArr = [ x for i in zip(half1[1:], half2[:-1]) for x in i ]
+        return [half1[0]] + newArr + [half2[-1]]
+
+    ref_data = np.array([None for i in range(len(data[0]))])
+    if refmol:
+        from moleculekit.projections.metricdihedral import MetricDihedral 
+        refmol_data = MetricDihedral().project(refmol).ravel()
+        ref_seq = list(refmol.sequence().values())[0]
+        mol_seq = mol.sequence()[chain_id]
+        seq_offset_start = mol_seq.index(ref_seq)*4
+        ref_data[seq_offset_start:seq_offset_start+len(refmol_data)] = refmol_data
+        ref_std_sin = _merge(ref_data[0::2])
+        ref_std_cos = _merge(ref_data[1::2])
+
+        refmol_mapping = np.array(MetricDihedral().getMapping(refmol).description)
+        ref_mapping_sin = _merge(refmol_mapping[0::2])
+        ref_mapping_cos = _merge(refmol_mapping[1::2])
+
+    mol_mapping = np.array(MetricDihedral().getMapping(mol).description)
+    mol_mapping_sin = _merge(mol_mapping[0::2])
+    mol_mapping_cos = _merge(mol_mapping[1::2])   
+    label = [f"{b}{i + start_index}" for i,b in enumerate(mol.sequence()[chain_id])]
+    newLabel = ["{}-{}".format(label[idx], label[idx + 1]) for idx in list(range(len(label)-1))]
+
+    yLabel = ["Cosine", "Sine"]
+
+    if ax is not None: plt.setca(ax)
+        
+    fig, axes = plt.subplots(figsize=(6, len(data)*1.6), 
+        nrows=len(data), ncols=1, sharex=True, dpi=300)
+
+    if title: fig.suptitle(title)
+
+    try: len(axes)
+    except: axes = [axes]
+
+    for idx, (ax, dat)  in enumerate(zip(axes, data)):
+        new_mean_sin = _merge(dat[0::2])
+        new_mean_cos = _merge(-1*dat[1::2])
+        if std_data is not None:
+            new_std_sin = _merge(std_data[idx][0::2])
+            new_std_cos = _merge(std_data[idx][1::2])
+        if ref_data is not None:
+            ax.errorbar(range(len(new_mean_sin)), ref_std_cos, lw=0.5, fmt="-", capsize=1, color="red")
+        xticks = [i - 0.5 for i in range(0, len(new_mean_sin)+1, 2)]
+        ax.errorbar(range(len(new_mean_sin)), new_mean_cos, yerr=new_std_cos, lw=0.5, fmt="-", capsize=1)
+        # ax.errorbar(range(len(new_mean_sin)), new_mean_sin, yerr=new_std_sin, lw=0.5, fmt="-", capsize=3)
+    
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(label, rotation='vertical', ha="center", fontdict={'size': "small"})
+    if save: plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
+
+def plot_dihedral3(data, mol, refmol, chain_id="P1", start_index=1, title=None, std_data=None, ax=None, save=None):
+    import matplotlib.pyplot as plt
+    from moleculekit.projections.metricdihedral import MetricDihedral 
+
+    # def _merge(arr):
+    #     half1 = arr[0::2]
+    #     half2 = arr[1::2]
+    #     newArr = [ x for i in zip(half1[1:], half2[:-1]) for x in i ]
+    #     return [half1[0]] + newArr + [half2[-1]]
+
+    # ref_data = np.array([None for i in range(len(data[0]))])
+    # if refmol:
+    ref_data = MetricDihedral().project(refmol).ravel()
+    ref_seq = list(refmol.sequence().values())[0]
+    mol_seq = mol.sequence()[chain_id]
+    seq_offset_start = mol_seq.index(ref_seq)*4
+    new_data = np.array([i[seq_offset_start:seq_offset_start+len(ref_data)] - ref_data for i in data])
+
+    if std_data is not None: 
+        new_std = np.array([i[seq_offset_start:seq_offset_start+len(ref_data)] for i in std_data])
+
+    # ref_std_sin = _merge(ref_data[0::2])
+    # ref_std_cos = _merge(ref_data[1::2])
+
+    # refmol_mapping = np.array(MetricDihedral().getMapping(refmol).description)
+    # ref_mapping_sin = _merge(refmol_mapping[0::2])
+    # ref_mapping_cos = _merge(refmol_mapping[1::2])
+
+    # mol_mapping = np.array(MetricDihedral().getMapping(mol).description)
+    # mol_mapping_sin = _merge(mol_mapping[0::2])
+    # mol_mapping_cos = _merge(mol_mapping[1::2])   
+    label = [f"{b}{i + start_index}" for i,b in enumerate(mol.sequence()[chain_id])]
+    newLabel = ["{}-{}".format(label[idx], label[idx + 1]) for idx in list(range(len(label)-1))]
+
+    yLabel = ["Cosine", "Sine"]
+
+    if ax is not None: plt.setca(ax)
+        
+    fig, axes = plt.subplots(figsize=(6, len(data)*1.6), 
+        nrows=len(data), ncols=1, sharex=True, dpi=300)
+
+    if title: fig.suptitle(title)
+
+    try: len(axes)
+    except: axes = [axes]
+
+    for idx, (ax, dat)  in enumerate(zip(axes, new_data)):
+        # new_mean_sin = _merge(dat[0::2])
+        # new_mean_cos = _merge(-1*dat[1::2])
+        # if std_data is not None:
+        #     new_std_sin = _merge(std_data[idx][0::2])
+        #     new_std_cos = _merge(std_data[idx][1::2])
+        # if ref_data is not None:
+        #     ax.errorbar(range(len(new_mean_sin)), ref_std_cos, lw=0.5, fmt="-", capsize=1, color="red")
+        ax.errorbar(range(len(dat)), np.abs(dat), yerr=new_std[idx], lw=0.5, fmt="-", capsize=1)
+        # ax.errorbar(range(len(new_mean_sin)), new_mean_sin, yerr=new_std_sin, lw=0.5, fmt="-", capsize=3)
+    
+    # xticks = [i - 0.5 for i in range(0, len(new_mean_sin)+1, 2)]
+    # ax.set_xticks(xticks)
+    # ax.set_xticklabels(label, rotation='vertical', ha="center", fontdict={'size': "small"})
+    if save: plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
+
+
+def plot_helicity(data, yerr=None, beta_helix=False, label=None, xticks=None, ylabel=None, cmap="jet", legend=True, ax=None, save=None):
+    import matplotlib as mpl
+    data_length = len(data)
+    data_shape = len(data[0])
+    colors = mpl.cm.get_cmap(cmap, data_length)
+    c = np.array(colors(range(data_length)))
+    w = 0.9/len(data)
+   
+    label = [f"Dataset {i}" for i in range(data_length)] if not label else label
+    
+    plt.sca(ax) if ax else None        
+
+    for idx, i in enumerate(data):
+        tmp_yerr = [0 for i in range(data_shape)] if yerr is None else yerr[idx]
+        if beta_helix and len(data) > 2:
+            raise RuntimeError("Length of the data should be maximum 2 if plot beta and helix values")
+        elif beta_helix:
+            plt.errorbar(np.arange(0, data_shape), i, yerr=tmp_yerr, label=label[idx], lw=3, color=c[idx], fmt="-o", capsize=3)
+        else: 
+            plt.bar(np.arange(0, data_shape) + w*idx, i, width=w,
+                    alpha=0.5, color=c[idx], label=label[idx], capsize=1, edgecolor = 'black')
+            plt.errorbar(np.arange(0, data_shape) + w*idx, i, yerr=tmp_yerr, lw=1, c='k', linestyle="", capsize=3)
+
+    plt.ylim(0, 1.5)
+    plt.xlim(-1, data_shape)
+
+    if xticks:
+        _ = plt.xticks(np.arange(data_shape) + w, xticks, rotation=90, ha="center")
+    plt.legend() if legend else None 
+
+    plt.ylabel(ylabel) if ylabel else plt.ylabel("Helicity (%)")
+
     if save:
         plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
 
-    if plot:
-        plt.show()
 
-def _merge(arr):
-    half1 = arr[0::2]
-    half2 = arr[1::2]
-    newArr = [ x for i in zip(half1[1:], half2[:-1]) for x in i ]
-    return [half1[0]] + newArr + [half2[-1]]
 
 def _contactVecToMatrix(vector, atomIndexes):
     from copy import deepcopy
@@ -292,24 +495,24 @@ def _contactVecToMatrix(vector, atomIndexes):
         mapping[col, row] = i
     return matrix, mapping, uqAtomGroups
 
-def _contact_plot(ver, axes,  mol, mapping, dpi=200, title=None, xlabels=None, ylabels=None, legend=False):
+def _contact_plot(ver, axes,  mol, mapping, dpi=200, title=None, xlabels=None, ylabels=None,  legend=False, labels=True, s=110, start_idx=0):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib import cm as clmap
     global mpbl
     vector = np.ones(ver.shape, dtype=bool)
-    colors= ver
+    colors = ver
     truecontacts = np.zeros(len(vector), dtype=bool)
     
     # Creating the 2D contact maps
     cm, newmapping, uqAtomGroups = _contactVecToMatrix(vector, mapping.atomIndexes)
     num = len(uqAtomGroups)
     _ , _, uq = _contactVecToMatrix(truecontacts, mapping.atomIndexes)
-
+    
     if not xlabels:
-        xlabels = [mol.resname[atom[0]] + str(mol.resid[atom[0]]) for atom in uq]
+        xlabels = [mol.resname[atom[0]] + str(mol.resid[atom[0]] + start_idx) for atom in uq]
 
     if not ylabels:
-        ylabels = [mol.resname[atom[0]] + str(mol.resid[atom[0]]) for atom in uq]
+        ylabels = [mol.resname[atom[0]] + str(mol.resid[atom[0]] + start_idx) for atom in uq]
 
     rows, cols = np.where(cm)
 
@@ -323,12 +526,13 @@ def _contact_plot(ver, axes,  mol, mapping, dpi=200, title=None, xlabels=None, y
     rows = rows + 0.5
     cols = cols + 0.5
 
-    axes.set_xticklabels(xlabels, rotation="vertical", ha='left')
-    axes.set_yticklabels(ylabels, va='bottom')
-    axes.set_xticks(np.arange(0, num, 1))
-    axes.set_yticks(np.arange(0, num, 1))
+    if labels:
+        axes.set_xticklabels(xlabels, rotation="vertical", ha='left')
+        axes.set_yticklabels(ylabels, va='bottom')
+        axes.set_xticks(np.arange(0, num, 1))
+        axes.set_yticks(np.arange(0, num, 1))
 
-    axes.scatter(rows, cols, s=110, c=colors, lw=0, marker="s")
+    axes.scatter(rows, cols, s=s, c=colors, lw=0, marker="s")
     axes.set_axisbelow(True)
     axes.set_title(title)
     # axes.grid(which="both", color='#969696', linestyle='-', linewidth=1)
@@ -342,7 +546,7 @@ def _contact_plot(ver, axes,  mol, mapping, dpi=200, title=None, xlabels=None, y
     #     plt.colorbar(im, cax=cax)
 
 
-def contact_plot(data, mol, cols, rows, model=None, plot=True, save=None, **kwargs):
+def contact_plot(data, mol, cols, rows, model=None, factor=10, plot=True, save=None, **kwargs):
     """Plots a contact matrix for each data in the array.
     Plot an NxM figure where N corresponds to rows and M to cols.
     All data component should belong to the same type of molecule
@@ -366,23 +570,21 @@ def contact_plot(data, mol, cols, rows, model=None, plot=True, save=None, **kwar
     **kwargs
         Additional arguments for plotting such a title or axes labels for each individual plot
     """
-    f, axes = plt.subplots(ncols=cols, nrows=rows, figsize=(cols*10, rows*10),
+    _, axes = plt.subplots(ncols=cols, nrows=rows, figsize=(cols*factor, rows*factor),
         dpi=200)
 
-    for idx, (dat, ax) in enumerate(zip(data, axes.flat)):
-        _contact_plot(ver=np.array(dat), axes=ax, title=f'Macro-{idx}', mol=mol, dpi=200, **kwargs)
+    axes = axes.flatten() if type(axes) == np.ndarray else [axes]
 
+    for idx, (dat, ax) in enumerate(zip(data, axes)):
+        _contact_plot(ver=np.array(dat), axes=ax, title=f'Macro-{idx + 1}', mol=mol, dpi=200, **kwargs)
+    if save:
+        plt.savefig(save, dpi=200, bbox_inches='tight', pad_inches=0.2)
+    
     if plot:
         plt.show()
 
-    if save:
-        plt.savefig(save, dpi=200, bbox_inches='tight', pad_inches=0.2)
 
 def generate_labels(mol, *args):
-    three_letter ={'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
-                'D':'ASP', 'N':'ASN', 'H':'HSD', 'W':'TRP', 'F':'PHE', 'Y':'TYR', \
-                'R':'ARG', 'K':'LYS', 'S':'SER', 'T':'THR', 'M':'MET', 'A':'ALA', \
-                'G':'GLY', 'P':'PRO', 'C':'CYS', 'MOL':'MOL'}
 
     all_res = [three_letter[i]+str(b) for i, b in zip(list(mol.sequence()['P1']), list(set(mol.resid[mol.atomselect('protein')])))]
 
@@ -408,7 +610,6 @@ def plot_mfpt(data, cmap="tab20c", save=None):
         Path of the file in which to save the figure (the default is None, which does not save the plot)
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
-    plt.figure(dpi=300)
     plt.title("MFPT between macros")
     ax = plt.gca()
     im = plt.imshow(np.log10(data), cmap=cmap)
@@ -430,6 +631,52 @@ def plot_mfpt(data, cmap="tab20c", save=None):
     cbar.set_label("$\it{log_{10} (mfpt)}$")
     if save:
         plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
+
+
+def plot_goal_rmsd(rmsd_data, std=None, colors=None, plot=True, save=None):
+    plt.title("Min RMSD by epoch")
+    plt.xlabel("Epoch")
+    plt.ylabel("RMSD (A)")
+    plt.ylim((0, np.max(rmsd_data)+2))
+    
+    if not colors:
+        color_tree = plt.cm.get_cmap("viridis", len(rmsd_data))
+        colors = [color_tree(i) for i in range(len(rmsd_data))]
+
+    for idx, (col, data) in enumerate(zip(colors, rmsd_data)):
+        plt.plot(range(len(data)), data, color=col)
+        plt.plot(range(len(data)), data, "o", color=col)
+        if std is not None:
+            plt.fill_between(range(len(data)), data+std[idx], data-std[idx], alpha=0.5, facecolor=col)
+    
+    if plot:
+        plt.show()
+    if save:
+        plt.savefig(save, dpi=300, bbox_inches='tight', pad_inches=0.2)
+
+def plot_animated_contacts(contacts, ylab=None, xlab=None, save=None):
+    import matplotlib.animation as animation
+    fig, ax=plt.subplots(figsize=(17, 10))
+    container = []
+
+    for _, row in contacts.iterrows():
+        frame_data = np.transpose(row.contacts.reshape((87, -1)))
+        title = ax.text(0.5,1.05,"Epoch {}".format(row.epoch), 
+                        size=plt.rcParams["axes.titlesize"],
+                        ha="center", transform=ax.transAxes, )
+        im = ax.imshow(frame_data, vmin=0, vmax=3)
+        if xlab:
+            ax.set_xticks(np.arange(len(xlab)) + 0.0)
+            ax.set_xticklabels(xlab, rotation=90)
+        if ylab:
+            ax.set_yticks(np.arange(len(ylab)) + 0.0)
+            ax.set_yticklabels(ylab)
+        container.append([im, title])
+        
+    ani = animation.ArtistAnimation(fig, container, interval=200, blit=True)
+    if save:
+        ani.save(save, writer='imagemagick', fps=2)
+    return ani
 
 if __name__ == "__main__":
     from htmd.model import getStateStatistic

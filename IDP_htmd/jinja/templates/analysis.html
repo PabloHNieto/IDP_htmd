@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
     <link rel="icon" 
       type="image/png" 
-      href="protein-17-554033.png">
+      href="/shared/pablo/IDP_htmd/IDP_htmd/jinja/templates/protein-17-554033.png">
 </head>
 <body>
 	<div class="container mt-4 mb-4">
@@ -17,6 +17,27 @@
 			<br>
 			<h4 class="font-weight-bold">Dataset: {{ folder }}</h4>
 		</div>
+
+	<div> 
+		<span class="font-weight-bold text-uppercase">Parameters</span>
+		<div class="row">
+			{% if (parameters)  %}
+					<div class="col-md-12">Metric</div>
+					{% for met in metrics %}
+						<div class="col-md-12 mb-2">
+							{{met}} - {{metrics[met]}}
+						</div>
+					{% endfor %}
+				{% for p in parameters['model'] %}
+						<div class="col-md-3 ">
+							{{p}} - {{parameters['model'][p]}}
+						</div>
+					{% endfor %}
+			{%  else  %}
+				<h5>Parameters not found</h5>
+			{% endif %}
+		</div>
+	</div>
 	
 	{% if (kinetics)  %}
 		<div>
@@ -45,26 +66,7 @@
 	{% endif %}
 	
 
-	<div> 
-		<span class="font-weight-bold text-uppercase">Parameters</span>
-		<div class="row">
-			{% if (parameters)  %}
-					<div class="col-md-12">Metric</div>
-					{% for met in metrics %}
-						<div class="col-md-12 mb-2">
-							{{met}} - {{metrics[met]}}
-						</div>
-					{% endfor %}
-				{% for p in parameters['model'] %}
-						<div class="col-md-3 ">
-							{{p}} - {{parameters['model'][p]}}
-						</div>
-					{% endfor %}
-			{%  else  %}
-				<h5>Parameters not found</h5>
-			{% endif %}
-		</div>
-	</div>
+
 	<div class="row">
 		{% for pic in pictures %}
 			<div class="col-md-8 offset-2 mt-lg-2">

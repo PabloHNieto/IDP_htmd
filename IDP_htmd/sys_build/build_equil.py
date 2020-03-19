@@ -57,7 +57,7 @@ def write_production(input_folder, output, temperature=310, steps='10000000'):
     except:
         print ("---> ", input_folder)
 
-def build_worker_charm22star(start_mol, idx, out="/tmp", saltconc=0.015):
+def build_worker_charm22star(start_mol, idx, out="/tmp", saltconc=0.05):
     from random import randint
     topos22 = ['top/top_all22star_prot.rtf',
             'top/top_water_ions.rtf']

@@ -65,9 +65,11 @@ class ModelAnalysis(object):
         self.out_folder = output_folder
         self.metrics = None
         self.skip = 1
+        self.tica = True
         self.ticadim = 3
         self.ticalag = 20
         self.cluster = 500
+        self.data_fstep = None
         self.macronum = 5
         self.modellag = 20
         self.modelunits = "ns"
@@ -102,9 +104,9 @@ class ModelAnalysis(object):
         from IDP_htmd.model_utils import scan_clusters
 
         # Checking essential paramenters
-        if (not self.metrics):
-            print("Metrics have not been set")
-            return 
+        # if (not self.metrics):
+        #     print("Metrics have not been set")
+        #     return 
 
         os.makedirs(self.out_folder, exist_ok=True)
 
@@ -125,7 +127,8 @@ class ModelAnalysis(object):
 
 
     def write_parameters(self, excluded=['out_folder', 'input_folder', 'model', 'mol', 'plot_contacts', 'plot_dihedral',
-        'fes', 'plot_mol_contacts', 'rg_analysis', 'start_index', 'bulk_split', 'save_model']):
+        'fes', 'plot_mol_contacts', 'rg_analysis', 'start_index', 'bulk_split', 'save_model', 'plot_dihedral_data', 
+        'plot_contacts_data', 'plot_atom_mol_data', 'plot_mol_contacts_data']):
         """Write the parameters set for the analysis to a json file
         
         Parameters
@@ -142,7 +145,7 @@ class ModelAnalysis(object):
             json_model.pop(key, None)
         json_info = {'model': json_model}
 
-        with open(f'{self.out_folder}file.txt', 'w') as file:
+        with open(f'{self.out_folder}/file.txt', 'w') as file:
           file.write(json.dumps(json_info))
 
     
@@ -159,8 +162,8 @@ class ModelAnalysis(object):
             print("Creating new analysis")
             self.write_parameters()
             self.model = analyze_folder(self.input_folder, self.out_folder, self.skip, self.metrics, self.cluster,
-                self.ticadim, self.ticalag, self.modellag, self.modelunits, self.macronum, self.bulk_split, 
-                self.fes, self.rg_analysis, self.save_model)
+                self.tica, self.ticadim, self.ticalag, self.modellag, self.modelunits, self.macronum, self.bulk_split, 
+                self.fes, self.rg_analysis, self.save_model, self.data_fstep)
 
         if isinstance(self.model, str):
             try:
@@ -181,19 +184,21 @@ class ModelAnalysis(object):
     def additional_plots(self):
         """Createa additinal plot following the parameters set for the instance of the class
         """
+        from htmd.metricdata import MetricData
+
         if self.plot_dihedral:
-            self.plot_dih(self.plot_dihedral_data)
+            self.plot_dih(data=self.plot_dihedral_data)
 
         if self.plot_mol_contacts:
-            self.plot_mol_contact(self.plot_mol_contacts_data)
-            self.plot_atom_mol_contact(self.plot_atom_mol_data)
+            self.plot_mol_contact(data=self.plot_mol_contacts_data)
+            self.plot_atom_mol_contact(data=self.plot_atom_mol_data)
 
         if self.plot_contacts:
             for name, sel, threshold, data in self.plot_contacts:
-                self.plot_contact_map(name, sel, threshold, data)
+                self.plot_contact_map(name, sel, data, threshold)
 
     
-    def plot_contact_map(self, name, selection="noh and protein", threshold=4):
+    def plot_contact_map(self, name, selection="noh and protein", data=None, threshold=4):
         """Generate a residue-residue contact plot by macrostate given a VMD selection
         
         Parameters
@@ -211,16 +216,16 @@ class ModelAnalysis(object):
         
         mapping = contact_metric.getMapping(self.mol)
         aux_plot(self.model, self.mol, contact_plot, metric=contact_metric, skip=self.skip, method=np.mean,
-          mapping=mapping, cols=2, rows=int(self.model.macronum/2)+self.model.macronum%2, data=data,
-          plot=False, save=self.out_folder + "/{}.png".format(name))
+                 mapping=mapping, cols=2, rows=int(self.model.macronum/2)+self.model.macronum%2, data=data,
+                 plot=False, save=f"{self.out_folder}/{name}.png")
 
     
-    def plot_dih(self, data=None):
+    def plot_dih(self, sel="protein", data=None):
         """Creates a plot of the standard deviation of the dihedral angles of the protein by macrostate
         """
         from htmd.projections.metricdihedral import MetricDihedral
 
-        dih_metric = MetricDihedral(protsel="protein")
+        dih_metric = MetricDihedral(protsel=sel)
         aux_plot(self.model, self.mol, plot_dihedral, metric=dih_metric, data=data, skip=self.skip, method=np.std,
             save=self.out_folder + "/{}.png".format(self.plot_dihedral), chain_id="P1",
             start_index=self.start_index)
@@ -263,17 +268,16 @@ class ModelAnalysis(object):
             Threshold distance in angstrom to discrinate contact vs no-contact
         """
         from htmd.projections.metricdistance import MetricDistance
-
-        labels = generate_labels(self.mol)
+        # labels = generate_labels(self.mol)
         mol_contact_map_metric = MetricDistance(sel1=sel1, sel2=sel2, 
             groupsel1="residue", groupsel2="all", threshold=5, metric="contacts")
 
-        mapping = mol_contact_map_metric.getMapping(self.mol)
+        # mapping = mol_contact_map_metric.getMapping(self.mol)
         aux_plot(self.model, self.mol, plot_contacts, metric=mol_contact_map_metric, skip=self.skip, method=np.mean,
             title="Contacts by residue", data=data,
             plot=False, save=f'{self.out_folder}/{self.plot_mol_contacts}.png')
 
-    
+
     def generate_html_summary(self):
         """Generates a html report with all the data generated
         """
@@ -297,11 +301,11 @@ class ModelAnalysis(object):
             print(e)
             kinetics = None
 
-        if len(pictures)>0:
+        if pictures:
             info = {
                 'date': date,
                 'pictures': pictures,
-                'folder': self.out_folder }
+                'folder': self.out_folder}
 
             if js:
                 info['metrics'] = js['model']['metrics']
@@ -311,13 +315,14 @@ class ModelAnalysis(object):
             if kinetics:
                 info['kinetics'] = kinetics
 
-            r = Render("analysis", f"{self.out_folder}IDP_summary", info)
+            Render("analysis", f"{self.out_folder}/IDP_summary", info)
 
 
     def calc_kinetics(self, source=None):
         """Calculates kinetics rates for the model
         
-        Calculates all kinetics parameters starting from one source state to all other possible sinks
+        Calculates all kinetics parameters starting from 
+        one source state to all other possible sinks
 
         Parameters
         ----------
@@ -331,6 +336,8 @@ class ModelAnalysis(object):
             from a source macro to each other macrostate
         """
         import pandas as pd
+        import numpy as np
+        from moleculekit.molecule import Molecule
         from htmd.kinetics import Kinetics
         
         columns = ['path', 'mfpton', 'mfptoff', 'kon', 'koff', 'kdeq', 'g0eq']
@@ -342,19 +349,33 @@ class ModelAnalysis(object):
         if (self.bulk_split and not source):
             source = self.model.macronum - 1 
 
-        for  i in range(self.model.macronum):
-            kin_rates = Kinetics(self.model, self.temperature, 
-                concentration=self.concentration, source=source, sink=i).getRates()
-            row = kin_rates.__dict__.copy()
-            row['path'] = f'{source}-->{i}'
-            kin_summary = kin_summary.append(row, ignore_index=True)
-            
-            #Creating values with string of scientific notation
-            str_row = { col: "{:.2E}".format(row[col]) for col in columns if col is not 'path' }
-            str_row['path'] = f'{source}-->{i}'
-            str_kin_summary = str_kin_summary.append(str_row, ignore_index=True)
+        if not self.concentration:
+            try: 
+                from glob import glob
+                gen_folder = glob(f"{self.input_folder}/generators/*/")[0]
+                tmp_mol = Molecule(f"{gen_folder}/structure.pdb")
+                tmp_mol.read(f"{gen_folder}/structure.psf")
+                self.concentration = 55.55 / np.sum(tmp_mol.resname == "TIP3") / 3 
+            except:
+                self.concentration = 0
 
-        str_kin_summary.to_json(f'{self.out_folder}kin.json', orient='split', index=False)
+        if self.concentration:
+            for  i in range(self.model.macronum):
+                for  j in range(self.model.macronum):
+                    kin = Kinetics(self.model, self.temperature, concentration=self.concentration, 
+                                source=i, sink=j)
+                    kin_rates = kin.getRates()
+                    source = kin.source
+                    row = kin_rates.__dict__.copy()
+                    row['path'] = f'{source}-->{i}'
+                    kin_summary = kin_summary.append(row, ignore_index=True)
+                    
+                    #Creating values with string of scientific notation
+                    str_row = { col: "{:.2E}".format(row[col]) for col in columns if col is not 'path' }
+                    str_row['path'] = f'{i}-->{j}'
+                    str_kin_summary = str_kin_summary.append(str_row, ignore_index=True)
+
+        str_kin_summary.to_json(f'{self.out_folder}/kin.json', orient='split', index=False)
 
         return kin_summary
 

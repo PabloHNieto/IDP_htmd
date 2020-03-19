@@ -15,13 +15,14 @@ class Graph_MSM():
     def model_to_network(self):
         """Summary
         """
-        # self.graph = nx.DiGraph()
-        self.graph = nx.Graph()
+        self.graph = nx.DiGraph()
+        # self.graph = nx.Graph()
 
         #Initilize nodes
         for i in self.flux.newsets:
-            self.graph.add_node(i)
-            self.graph.node[i]["flux"] = 0
+            self.graph.add_node(i, flux=0)
+            # self.graph.node[i]["flux"] = 0
+            
 
         #Adding weights and connections
         percent_fluxes = 100 * self.flux.pathfluxes / np.sum(self.flux.pathfluxes)
@@ -32,6 +33,7 @@ class Graph_MSM():
                 
                 #Updating nodes weight
                 self.graph.node[end]["flux"] += flux
+                
 
                 #Updating edges weight
                 if self.graph.has_edge(start, end):
@@ -39,6 +41,79 @@ class Graph_MSM():
                 else:
                     self.graph.add_edge(start, end, weight=flux)
 
+def hierarchical_layout(msm_graph, source_pos=(0, 2), sink_pos=(0, -2), source=None, sink=None):
+    import networkx as nx
+
+    x_step = 1
+    
+    graph = msm_graph.graph
+    degrees = np.array(graph.in_degree(weight="weight"))
+    degrees = degrees[np.argsort(degrees[:,1])]
+    if not source:
+        source = degrees[np.argmin(degrees[:,1])][0]
+    if not sink:
+        sink = degrees[np.argmax(degrees[:,1])][0]
+    
+    sorted_nodes = degrees[np.where((degrees[:,1]>0) | (degrees[:,0]==source)), 0][0]
+    sorted_nodes = sorted_nodes.astype("int32")
+    sorted_positions = {i:idx for idx, i in enumerate(sorted_nodes)}
+    _, min_y = sink_pos
+    _, max_y = source_pos
+
+
+    pos = {source: source_pos, sink: sink_pos}
+
+    ## Setting Y positions
+    #define levels
+    tmp_graph = nx.Graph(graph) #Changing from diGraph to Graph
+    reach_source = nx.shortest_path_length(tmp_graph, source=source)
+    reach_sink = nx.shortest_path_length(tmp_graph, source=sink)
+
+    #reach_node_lengths = {i: reach_source[i] - reach_sink[i] for i in sorted_nodes if i not in [sink, source]}
+    node_levels = np.array([reach_source[i] - reach_sink[i] for i in sorted_nodes])
+    level_names = set(node_levels)
+    level_number = len(level_names)
+
+    node_levels[sorted_positions[sink]] = max(node_levels) + 1 
+    node_levels[sorted_positions[source]] =  min(node_levels) - 1
+    level_step = -1*(max_y - min_y)/(level_number + 1)
+    
+    #Set y pos
+    #tmp_pos_y = {node: level*level_step for node, level in reach_node_lengths.items()}
+    y_pos = np.array([node_levels[sorted_positions[node]]*level_step for node in sorted_nodes])
+    ## Setting X positions
+    x_pos = np.zeros(len(sorted_nodes))
+    nodes_on_levels = {i:0 for i in level_names}
+    paths = [i.split("->") for i in msm_graph.flux.nodes.keys()]
+
+    added_nodes = [source, sink]
+    for path in paths:
+        for node in path:
+            node = int(node)
+            if node not in added_nodes:
+                level = node_levels[sorted_positions[node]]
+                tmp_nodes_on_level = int(nodes_on_levels[level]) 
+                sign = 2 * (tmp_nodes_on_level % 2) - 1 if  tmp_nodes_on_level != 0 else 0
+                tmp_nodes_on_level = tmp_nodes_on_level if tmp_nodes_on_level % 2 == 0 else tmp_nodes_on_level + 1
+                pad = 0.5 * x_step if int(np.sum(node_levels==level)) % 2 == 0 else 0
+                #pos[node] = (sign * x_step * int(tmp_nodes_on_level/2) - pad, tmp_pos_y[node])
+                x_pos[[sorted_positions[node]]] = sign * x_step * int(tmp_nodes_on_level/2) - pad 
+                nodes_on_levels[level] += 1
+                added_nodes.append(node)
+    
+    stair_factor = 0.1
+    
+
+    for i in level_names:
+        tmp_nodes = sorted_nodes[node_levels == i]
+        tmp_nodes_x = x_pos[node_levels == i]
+        x_sort = np.argsort(tmp_nodes_x)
+        tmp_nodes_idx = [sorted_positions[i] for i in tmp_nodes[x_sort]]
+        stair_modifier = -np.arange(0, len(tmp_nodes_x)*stair_factor, stair_factor) + stair_factor * int(len(tmp_nodes_x)/2)
+        y_pos[tmp_nodes_idx] += stair_modifier
+
+    pos = {i:(x_pos[sorted_positions[i]], y_pos[sorted_positions[i]]) for i in sorted_nodes}
+    return pos
 
     # def findPath(self, source=[], target=[]):
     #     # all_paths = nx.shortest_path(self.Gc)

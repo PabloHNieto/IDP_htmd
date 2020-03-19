@@ -1,7 +1,7 @@
 import numpy as np
 
-def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=500, ticadim=5,
-    tica_lag=20, model_lag=10, model_units='ns', macro_N=10, bulk_split=False, fes=True, rg_analysis=True, save=False): 
+def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=500, tica=True, ticadim=5, 
+    tica_lag=20, model_lag=10, model_units='ns', macro_N=10, bulk_split=False, fes=True, rg_analysis=True, save=True, data_fstep=None): 
     """Analysis script for create a Markov State Model
     
     Creates and returns a Markov State Model given a data folder.
@@ -20,6 +20,8 @@ def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=50
         Metric array used to project the data
     clu : int
         Number of cluster to create using the MiniBatchKMeans method.
+    tica: bool
+        Wether to use TICA of GWPCA for dimensionality reduction
     ticadim : int
         Number of TICA dimension to project the data. If None, the model will be created using the raw projected data
     tica_lag : int, optional
@@ -44,7 +46,6 @@ def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=50
     """
     from htmd.model import Model
     from htmd.molecule.molecule import Molecule
-    from htmd.projections.tica import TICA
     from htmd.simlist import simlist
     from htmd.projections.metric import Metric 
     from sklearn.cluster import MiniBatchKMeans
@@ -58,22 +59,43 @@ def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=50
     except:
         print("Folder already exists")
 
-    sims = glob(folder + 'filtered/*/')
-    fsims = simlist(sims, folder+'filtered/filtered.pdb')
+    try:
+        fsims = np.load(f"{folder}/simlist.npy", allow_pickle=True)
+        print(f"Loaded {folder}/simlist.npy")
+    except:
+        print("Creating simlist")
+        sims = glob(folder + 'filtered/*/')
+        fsims = simlist(sims, folder+'filtered/filtered.pdb')
     metr = Metric(fsims, skip=skip)
     metr.set(metrics)
-    data = metr.project()
     
     #Check if this gives problems to ITS
-    data.dropTraj()
 
-    if ticadim:
-        tica = TICA(data, tica_lag)
-        out_data = tica.project(ticadim)
-    else:
-        out_data = data
+    try:
+        model = Model(file=f"{out_folder}/model.dat")
+        out_data = model.data
+        print(f"Loading model: {out_folder}/model.dat")
+    except:
+        if tica and ticadim:
+            from htmd.projections.tica import TICA
+            print("Projecting TICA")
+            tica = TICA(metr, tica_lag)
+            out_data = tica.project(ticadim)
+        elif not tica and ticadim:
+            from htmd.projections.gwpca import GWPCA
+            data = metr.project()
+            data.dropTraj()
+            print("using GWPCA")
+            gwpca = GWPCA(data, tica_lag)
+            out_data = gwpca.project(ticadim)
+        else:
+            print("Not using TICA")
+            data = metr.project()
+            data.dropTraj()
+            out_data = data
 
     #Avoid some possibles error while clustering
+    if data_fstep: out_data.fstep = data_fstep
     x = True
     while x:
         try:
@@ -87,7 +109,6 @@ def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=50
 
     if macro_N:
         model.markovModel(model_lag, macro_N, units=model_units)
-        model.eqDistribution(plot=False, save=f"{out_folder}/1.2_eqDistribution.png")
         
         if bulk_split:
             try:
@@ -96,6 +117,8 @@ def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=50
             except Exception as e:
                 print("Could not perform the bulk splitting")
                 print(e)
+                
+        model.eqDistribution(plot=False, save=f"{out_folder}/1.2_eqDistribution.png")
 
         if rg_analysis:
             from IDP_htmd.IDP_analysis import rg_analysis
@@ -103,9 +126,9 @@ def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=50
             rg_data = rg_analysis(model, skip=skip)
             plot_RG(rg_data, mol,  save=f"{out_folder}/1.4_rg.png")
 
-        if fes and ticadim:
-            model.plotFES(0, 1, temperature=310, states=True,
-                plot=False, save=f"{out_folder}/1.3_fes.png")
+        # if fes and ticadim:
+            # model.plotFES(0, 1, temperature=310, states=True,
+            #     plot=False, save=f"{out_folder}/1.3_fes.png")
 
     if save:
         model.save(f"{out_folder}/model.dat")
@@ -115,12 +138,11 @@ def analyze_folder(folder=None, out_folder="/tmp",  skip=1, metrics=None, clu=50
 
 def rg_analysis(model, **kwargs):
     from htmd.model import getStateStatistic
-    from IDP_htmd.MetricRadiusGyration import MetricRG
+    from IDP_htmd.MetricRadiusGyration import metricRG
     from IDP_htmd.model_utils import get_data
     import numpy as np
 
-    rg_met = MetricRG()
-    rg_data = get_data(model, rg_met, **kwargs)
+    rg_data = get_data(model, metricRG, **kwargs)
     rg_mean = getStateStatistic(model, rg_data, states=range(model.macronum))
     rg_std = getStateStatistic(model, rg_data, states=range(model.macronum), method=np.std)
     
